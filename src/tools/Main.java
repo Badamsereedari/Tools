@@ -128,26 +128,30 @@ public class Main {
 			String newLine = itr.next();
 			newLine = newLine.replaceAll("\\s+", " ");
 
-			if (newLine.contains("~~")) {
-				isLastLine = true;
-			}
+			if (newLine != null && !newLine.equals("")) {
+				if (newLine.contains("~~")) {
+					isLastLine = true;
+				}
 
-			if (sql != null && !sql.equals("")) {
-				if (isFirstLine) {
-					sql = sql + " " + newLine;
+				if (sql != null && !sql.equals("")) {
+					if (isFirstLine) {
+						sql = sql + newLine;
+						isFirstLine = false;
+					} else {
+						sql = sql + " " + newLine;
+					}
+					if (isLastLine) {
+						sql = sql + "{newLine}";
+						isFirstLine = true;
+					}
 				} else {
-					sql = sql + newLine;
-					isFirstLine = false;
+					sql = newLine;
 				}
-				if (isLastLine) {
-					sql = sql + "\r\n";
-					isFirstLine = true;
-				}
-			} else {
-				sql = newLine;
 			}
 		}
-		sql = sql.trim();
+		sql = sql.replaceAll("\\s+", " ");
+		sql = sql.replace("{newLine}", "\r\n");
+		
 
 		writeToFile(filePath, sql);
 	}
