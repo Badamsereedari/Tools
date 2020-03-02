@@ -5,8 +5,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -16,12 +16,11 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -32,115 +31,91 @@ import com.itextpdf.tool.xml.XMLWorkerHelper;
 public class Main {
 
 	public static void main(String[] args) throws Exception {
-//		String formula = "SELECT CASE WHEN :AGE < 80 " + "          THEN :MATRIX|CNTRY|AGE " + "          ELSE "
-//				+ "             CASE WHEN :AGE >= 80 AND :AGE < 160  " + "             THEN 2 * :MATRIX "
-//				+ "             ELSE :MATRIX " + "             END " + "       END " + "          RESULT "
-//				+ "  FROM DUAL";
-//		List<String> params = getParamsFromFormula(formula);
-//		for (String p : params) {
-//			if (p.contains("MATRIX")) {
-//				System.out.println(p);
-//			}
-//		}
 
-//		String a = "a|a";
-//		String[] mParams = a.split("\\|");
-//		if (mParams.length > 0) {
-//			System.out.println(a);
-//		}
-//
-//		String dateString = "04-JAN-17";
-//		System.out.println("Date: " + str2Date(dateString));
+		String filePath = "C:\\Users\\badamsereedari.t\\Documents\\GEN_VIEW";
+		String moduleCode = "gen.s";
+		/**
+		 * 20 - Table, 30 - Type, 40 - Функц, 50 - View, 60 - Procedure, 70 - Package,
+		 * 80 - Data (constants, configs etc), 90 - Бусад (шаардлагатай үед ашиглана)
+		 */
 
-//		rptChgFolder();
-//		int Y3 = 2017;
+		String subLayer = "50";
 
-//		long diff = new TimeSpan().dateDiff(Func.str2Date("2017-08-15"), Func.str2Date("2017-08-20")).getAllDays();
-
-//		int days = new TimeSpan().dateDiff(Func.str2Date("2000-01-01"), Func.str2Date("2019-10-21")).getAllDays();
-//
-//		String daysStr = "";
-//		daysStr = String.valueOf(days);
-//		while (daysStr.length() < 4) {
-//			daysStr = "0" + daysStr;
-//		}
-//
-//		if (daysStr.length() > 4) {
-//			daysStr = daysStr.substring(0, 4);
-//		}
-
-//		print("isTrue: " + (a != null && !a.equals("")));
-
-//		oneline();
-//		readFromFile("-- SRC_VW_ASR_ACNT$20191029172111.sql");
-
-//		String data = "MM00000000";
-//		String regex = kendoMaskToRegex(data);
-//		System.out.println(regex);
-//
-//		Pattern pattern = Pattern.compile(regex);
-//
-//		Matcher matcher = pattern.matcher("RЭ90010101");
-//
-//		if (matcher.matches()) {
-//			System.out.println("matched");
-//		} else {
-//			System.out.println("not matched");
-//		}
-
-//		for (int i = 0; i < special.length(); i++) {
-//			print(Func.toString(special.charAt(i)));
-//			getHttpRequest("Administrator", "UBMongolia1234" + special.charAt(i));
-//		}
-
-//		String[] token1 = { "administrator", "system", "admin", "nes", "gcm", "posgres", "grapecity", "5DORRSH", "Mongolia@1", "UBMongolia1234" };
-//		String[] token2 = { "A7FBF607C0D37FED2AB4A4B5DFB7B8A04C1A0D37", "Mongolia@1", "UBMongolia1234", "nes", "gcm" };
-//
-//		for (int i = 0; i < 10; i++) {
-//			for (int j = 0; j < 5; j++) {
-//				String name = token1[i];
-//				String password = token2[j];
-//				getHttpRequest(name, password);
-//			}
-//		}
-//		String special = "0123456789@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-//		for (int i = 0; i < special.length(); i++) {
-//			String str = Func.toString(special.charAt(i));
-//			print(str);
-//			getHttpRequest("posgres' and password like '%" + str + "%' --", "asdfasd");
-//		}
-//		getHttpRequest("admin", "UBMongolia1234");
-
-//		String rptPath = "C:\\Users\\badamsereedari.t\\Documents\\Reports";
-//		getRptPath(rptPath);
-
-//		rptChgFolder();
-
-//		BigDecimal ctBa = new BigDecimal("625959.47");
-//		BigDecimal dtBa = new BigDecimal("-625959.4725");
-//
-//		dtBa = Func.round(
-//				Func.divBigDec(Func.round(Func.multBigDec(dtBa, new BigDecimal("1000")), 2, BigDecimal.ROUND_DOWN),
-//						new BigDecimal("1000")),
-//				2, BigDecimal.ROUND_DOWN);
-//
-//		if (Func.different(Func.addBigDec(ctBa, dtBa), BigDecimal.ZERO)) {
-//			print("ctBa amount: " + ctBa + ", dtBa amount: " + dtBa);
-//		} else {
-//			print("Done");
-//		}
-
-//		generateDoc();
-
-		oneline();
+		chgFileType(filePath, moduleCode);
+		addAndGetTimestamp(filePath, subLayer);
 	}
 
+	// regex шалгах
+	public static void regexChecker() {
+		String text = "select :POLICY_CODE, :p2, :MTRX|DAY|AGE from Customer where name = :pp3 ";
+		String ptrn = "(\\:[\\w|]+)";
+
+		regexChecker(text, ptrn);
+	}
+
+	public static void regexChecker(String text, String pattern) {
+		List<String> parameters = new ArrayList<>();
+		Pattern ptrn = Pattern.compile(pattern);
+		Matcher m = ptrn.matcher(text);
+		while (m.find()) {
+			String match = m.group(1);
+			match = match.replaceAll("\\:", "");
+			parameters.add(match);
+		}
+		System.out.println("Parameters: " + parameters);
+		text = text.replaceAll("\\|", "");
+		print(text);
+	}
+
+	// Төрсөн өдөр тооцох
+	public static int calculateAge(Date birthDate) {
+		int years = 0;
+		int months = 0;
+
+		Calendar birthDay = Calendar.getInstance();
+		birthDay.setTimeInMillis(birthDate.getTime());
+
+		long currentTime = System.currentTimeMillis();
+		Calendar now = Calendar.getInstance();
+		now.setTimeInMillis(currentTime);
+
+		years = now.get(Calendar.YEAR) - birthDay.get(Calendar.YEAR);
+		int currMonth = now.get(Calendar.MONTH) + 1;
+		int birthMonth = birthDay.get(Calendar.MONTH) + 1;
+
+		months = currMonth - birthMonth;
+
+		if (months < 0) {
+			years--;
+			months = 12 - birthMonth + currMonth;
+			if (now.get(Calendar.DATE) < birthDay.get(Calendar.DATE))
+				months--;
+		} else if (months == 0 && now.get(Calendar.DATE) < birthDay.get(Calendar.DATE)) {
+			years--;
+			months = 11;
+		}
+
+		if (now.get(Calendar.DATE) == birthDay.get(Calendar.DATE)) {
+			if (months == 12) {
+				years++;
+				months = 0;
+			}
+		}
+		return years;
+	}
+
+	// Trunc round
 	public static double truncate(double x) {
 		return Math.floor(x * 100) / 100;
 	}
 
+	// Нэг мөрөнд оруулах
 	public static void oneline() {
-		String filePath = "D:\\nes-server\\asr.b\\db\\20191217190100_asr.b_add_autonum_ptrn.sql";
+		String filePath = "D:\\nes-server\\asr.b\\db\\20200206120100_asr.b_add_pl_oper.sql";
+		oneline(filePath);
+	}
+
+	public static void oneline(String filePath) {
 
 		String sql = "";
 
@@ -165,7 +140,7 @@ public class Main {
 					isFirstLine = false;
 				}
 				if (isLastLine) {
-					sql = sql + "\n";
+					sql = sql + "\r\n";
 					isFirstLine = true;
 				}
 			} else {
@@ -177,6 +152,7 @@ public class Main {
 		writeToFile(filePath, sql);
 	}
 
+	// Файлаас мөр өөр нь салгаж жагсаалт болгох
 	public static List<String> readFileInList(String fileName) {
 
 		List<String> lines = Collections.emptyList();
@@ -185,43 +161,25 @@ public class Main {
 		}
 
 		catch (IOException e) {
-
-			// do something
 			e.printStackTrace();
 		}
 		return lines;
 	}
 
-	public static void writeToFile(String filePath, String str) {
-		try {
-			// Assume default encoding.
-			FileWriter fileWriter = new FileWriter(filePath);
-
-			// Always wrap FileWriter in BufferedWriter.
-			BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
-
-			// Note that write() does not automatically
-			// append a newline character.
-			bufferedWriter.write(str);
-
-			// Always close files.
-			bufferedWriter.close();
+	// Файл руу текс бичих
+	public static void writeToFile(String filePath, String text) {
+		try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filePath), "UTF-8"))) {
+			bw.write(text);
+			bw.flush();
+			bw.close();
 		} catch (IOException ex) {
 			System.out.println("Error writing to file '" + filePath + "'");
 		}
 	}
 
-	public static void readFromFile(String filePath, String startString) throws FileNotFoundException {
-//		String filePath = "C:\\Users\\badamsereedari.t\\Documents\\asr_view\\SRC_VW_ASR_ACNT.sql";
-
+	// view дотхор комент, BEQUEATH DEFINER хэсгийг хасах
+	public static void cleanView(String filePath, String startString) throws FileNotFoundException {
 		String sql = "";
-//		File file = new File(filePath);
-//		Scanner sc = new Scanner(file);
-//
-//		// we just need to use \\Z as delimiter
-//		sc.useDelimiter("\\Z");
-//
-//		System.out.println(sc.next());
 
 		List<String> l = readFileInList(filePath);
 
@@ -239,57 +197,39 @@ public class Main {
 		sql = sql.replace(";", "");
 		sql = sql.trim();
 
-		sql = sql.replace("{newLine}", "\n");
+		sql = sql.replace("{newLine}", "\r\n");
 
-		sql = startString + "\n" + sql;
+		sql = startString + "\r\n" + sql;
 
 		writeToFile(filePath, sql);
 	}
 
+	// өгөгдсөн фатерны хоорондохыг цэвэрлэх
 	public static String removeWithRegex(String str, String p1, String p2) {
 		String regexString = Pattern.quote(p1) + "(.*?)" + Pattern.quote(p2);
 
 		Pattern pattern = Pattern.compile(regexString);
-		// text contains the full text that you want to extract data
 		Matcher matcher = pattern.matcher(str);
 
 		while (matcher.find()) {
-			String textInBetween = matcher.group(1); // Since (.*?) is capturing group 1
-			// You can insert match into a List/Collection here
+			String textInBetween = matcher.group(1);
 
 			str = str.replace(p1 + textInBetween + p2, "");
 		}
 		return str;
 	}
 
+	// base64 энкод хийх
 	public static String encodeAsBase64(byte[] src) {
 		return Base64.getEncoder().encodeToString(src);
 	}
 
+	// base64 дэкод хийх
 	public static byte[] decodeFromBase64(String src) throws IOException {
 		return Base64.getDecoder().decode(src);
 	}
 
-	public static List<String> getParamsFromFormula(String formula) {
-		List<String> params = new ArrayList<>();
-		String regexString = ":(.*?) ";
-		Pattern pattern = Pattern.compile(regexString);
-		Matcher matcher = pattern.matcher(formula);
-
-		while (matcher.find()) {
-			params.add(matcher.group(1));
-		}
-
-		Set<String> set = new LinkedHashSet<>();
-		set.addAll(params);
-
-		params.clear();
-
-		params.addAll(set);
-
-		return params;
-	}
-
+	// Текстээс огноо гаргаж авах
 	public static Date str2Date(String pDate) {
 		SimpleDateFormat formatter = new SimpleDateFormat("dd-MMM-yy");
 		Date dt = null;
@@ -301,33 +241,45 @@ public class Main {
 		return dt;
 	}
 
-	public static void chgFileType() throws IOException {
-		String filePath = "C:\\Users\\badamsereedari.t\\Documents\\asr view";
-
+	// file-ын урд src нэмж байгаа
+	public static void chgFileType(String filePath, String moduleCode) throws IOException {
 		File folder = new File(filePath);
 		File[] listOfFiles = folder.listFiles();
 
 		for (int i = 0; i < listOfFiles.length; i++) {
 			if (listOfFiles[i].isFile()) {
-//				Path copied = Paths.get(filePath + File.separator + "SRC_" + listOfFiles[i].getName());
+				Path copied = Paths
+						.get(filePath + File.separator + "src_" + moduleCode + "_" + listOfFiles[i].getName());
 				Path originalPath = listOfFiles[i].toPath();
-//				try {
-//					Files.copy(originalPath, copied, StandardCopyOption.REPLACE_EXISTING);
-//				} catch (IOException e) {
-//					e.printStackTrace();
-//				}
-				String[] fileName = listOfFiles[i].getName().split("\\.");
+				try {
+					Files.copy(originalPath, copied, StandardCopyOption.REPLACE_EXISTING);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}
 
-				String timestamp = fileName[0] + "$" + Func.toDateTimeStr(new Date(), "yyyyMMddHHmmss") + ".sql";
+	// timestamp нэмэх
+	public static void addAndGetTimestamp(String filePath, String subLayer) throws IOException {
+		File folder = new File(filePath);
+		File[] listOfFiles = folder.listFiles();
+
+		for (int i = 0; i < listOfFiles.length; i++) {
+			if (listOfFiles[i].isFile()) {
+				String[] fileName = listOfFiles[i].getName().split("\\.sql");
+
+				String timestamp = fileName[0] + "$" + subLayer + Func.toDateTimeStr(new Date(), "yyyyMMddHHmmss");
 				String startup = '"' + timestamp + '"' + ",";
 				timestamp = "-- " + timestamp;
-				readFromFile(listOfFiles[i].getPath(), timestamp);
+				cleanView(listOfFiles[i].getPath(), timestamp);
 
 				print(startup);
 			}
 		}
 	}
 
+	// тайлангын файлын зам авах
 	public static void getRptPath(String rptPath) {
 		File folder = new File(rptPath);
 		File[] listOfFiles = folder.listFiles();
@@ -342,8 +294,13 @@ public class Main {
 		}
 	}
 
+	// тайлангын файлын зам солих
 	public static void rptChgFolder() {
 		String rptPath = "C:\\Users\\badamsereedari.t\\Documents\\test\\CBS_STANDARD";
+		rptChgFolder(rptPath);
+	}
+
+	public static void rptChgFolder(String rptPath) {
 
 		File folder = new File(rptPath);
 		File[] listOfFiles = folder.listFiles();
@@ -378,17 +335,6 @@ public class Main {
 		}
 	}
 
-//	private static void copyToPrevFolder(File file, String rootPath) {
-//		String copyPath = file.getParentFile().getName();
-//
-//		if (copyPath.equals(rootPath)) {
-//			print("same path no copy");
-//		} else {
-//			file.renameTo(new File("copyPath" + File.separator + file.getName()));
-//		}
-//
-//	}
-
 	private static void copyToPrevFolder(File file, String rootPath) {
 		String copyPath = file.getParentFile().getParentFile().getPath();
 		if (!rootPath.equals(copyPath)) {
@@ -404,13 +350,6 @@ public class Main {
 
 	private static void deleteFolder(String path) {
 		File file = new File(path);
-
-//		if (file.delete()) {
-//			System.out.println("File deleted successfully! path: " + path);
-//		} else {
-//			System.out.println("Failed to delete the file! path: " + path);
-//		}
-
 		deleteDir(file);
 	}
 
@@ -430,6 +369,7 @@ public class Main {
 		System.out.println(msg);
 	}
 
+	// KENDO маст шалгалт
 	public static String kendoMaskToRegex(String kendoMask) {
 
 		StringBuilder sbRegex = new StringBuilder();
@@ -512,90 +452,15 @@ public class Main {
 		return sbRegex.toString();
 	}
 
-//	public static void getHttpRequest(String loginName, String loginPassword) throws IOException {
-//		String ret = "";
-//		String cookie = "__RequestVerificationToken=JY8a2RvGwEdtufllyLZV1ssVQTQY0JUGDP7C0yB5NrJi76jKeNSrnu5-xFrjtYxCEs7tODx9UYW_gQ1_7GtG8eB2wCTryT1EbXbjASACYAU1; ASP.NET_SessionId=nzorrwmyd2am0ogcwqck2lg3";
-//		String checkUrl = "http://202.131.242.158:8080/Tasks/Login1";
-//		URL url = new URL(checkUrl);
-//
-//		HttpURLConnection httpConn = (HttpURLConnection) url.openConnection();
-//		httpConn.setDoOutput(true);
-//		httpConn.setDoInput(true);
-//		httpConn.setRequestProperty("Accept", "application/json");
-//		httpConn.setRequestMethod("GET");
-//		httpConn.setRequestProperty("Cookie", cookie);
-//
-//		int responseCode = httpConn.getResponseCode();
-//
-//		if (responseCode == HttpURLConnection.HTTP_OK) {
-//			BufferedReader br = new BufferedReader(new InputStreamReader((httpConn.getInputStream())));
-//			String tmp;
-//			while ((tmp = br.readLine()) != null) {
-//				ret = ret + tmp;
-//			}
-//		}
-//		Document doc = Jsoup.parse(ret);
-//		Elements newsHeadlines = doc.select("input");
-//		String RVT = "";
-//		for (Element n : newsHeadlines) {
-//			Attributes attr = n.attributes();
-//			String name = attr.get("name");
-//			String value = attr.get("value");
-//			if (name != null && name.equals("__RequestVerificationToken")) {
-//				RVT = value;
-//				break;
-//			}
-//		}
-//
-//		Map<String, String> arguments = new HashMap<>();
-//		arguments.put("__RequestVerificationToken", RVT);
-//		arguments.put("LoginName", loginName);
-//		arguments.put("LoginPass", loginPassword);
-//		StringJoiner sj = new StringJoiner("&");
-//		for (Map.Entry<String, String> entry : arguments.entrySet())
-//			sj.add(URLEncoder.encode(entry.getKey(), "UTF-8") + "=" + URLEncoder.encode(entry.getValue(), "UTF-8"));
-//		byte[] out = sj.toString().getBytes(StandardCharsets.UTF_8);
-//		int length = out.length;
-//
-//		HttpURLConnection httpCon = (HttpURLConnection) url.openConnection();
-//		httpCon.setFixedLengthStreamingMode(length);
-//		httpCon.setDoOutput(true);
-//		httpCon.setRequestProperty("Cookie", cookie);
-//		httpCon.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
-//		httpCon.setRequestProperty("Accept",
-//				"text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3");
-//		httpCon.setRequestMethod("POST");
-//
-//		try (OutputStream os = httpCon.getOutputStream()) {
-//			os.write(out);
-//		}
-//
-//		responseCode = httpCon.getResponseCode();
-//
-//		// always check HTTP response code first
-//		if (responseCode == HttpURLConnection.HTTP_OK) {
-//			BufferedReader br = new BufferedReader(new InputStreamReader((httpCon.getInputStream())));
-//			String tmp;
-//			ret = "";
-//			while ((tmp = br.readLine()) != null) {
-//				ret = ret + tmp;
-//			}
-//			String resp = ret.split("<div class=\"col-md-9\" style=\"color: red\">")[1]
-//					.split("                </div>")[0];
-//			print("userName: " + loginName + ", password: " + loginPassword + ", response: " + resp);
-////			if (!resp.equals("Чадсангүй")) {
-////				print("userName: " + loginName + ", password: " + loginPassword + ", response: " + resp);
-////			}
-//		} else {
-//			ret = "";
-//			print("responseCode: " + Func.toString(responseCode) + ", userName: " + loginName + ", password: "
-//					+ loginPassword);
-//		}
-//	}
-
-	public static String generateDoc() {
-		String path = "D:\\Workspace\\VAT_EMAIL_2019-12-02_09-40-02_25.HTML";
+	// html -> pdf
+	public static String htmlToPdf() {
+		String htmlPath = "D:\\Workspace\\VAT_EMAIL_2019-12-02_09-40-02_25.HTML";
 		String pdfPath = "D:\\Workspace\\PDF_test.pdf";
+
+		return htmlToPdf(htmlPath, pdfPath);
+	}
+
+	public static String htmlToPdf(String htmlPath, String pdfPath) {
 		Document document = new Document();
 		// step 2
 		try {
@@ -603,7 +468,7 @@ public class Main {
 			// step 3
 			document.open();
 			// step 4
-			XMLWorkerHelper.getInstance().parseXHtml(writer, document, new FileInputStream(path));
+			XMLWorkerHelper.getInstance().parseXHtml(writer, document, new FileInputStream(htmlPath));
 			// step 5
 			document.close();
 		} catch (Exception e1) {
