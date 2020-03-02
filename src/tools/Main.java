@@ -178,7 +178,12 @@ public class Main {
 	}
 
 	// view дотхор комент, BEQUEATH DEFINER хэсгийг хасах
-	public static void cleanView(String filePath, String startString) throws FileNotFoundException {
+	public static void cleanAndWriteSrcFile(String filePath, String startString) throws FileNotFoundException {
+		cleanAndWriteSrcFile(filePath, startString, false);
+	}
+
+	public static void cleanAndWriteSrcFile(String filePath, String startString, boolean removeComment)
+			throws FileNotFoundException {
 		String sql = "";
 
 		List<String> l = readFileInList(filePath);
@@ -192,7 +197,9 @@ public class Main {
 			}
 		}
 
-		sql = removeWithRegex(sql, "/*", "*/");
+		if (removeComment) {
+			sql = removeWithRegex(sql, "/*", "*/");
+		}
 		sql = removeWithRegex(sql, "(", "BEQUEATH DEFINER");
 		sql = sql.replace(";", "");
 		sql = sql.trim();
@@ -262,6 +269,10 @@ public class Main {
 
 	// timestamp нэмэх
 	public static void addAndGetTimestamp(String filePath, String subLayer) throws IOException {
+		addAndGetTimestamp(filePath, subLayer, true);
+	}
+
+	public static void addAndGetTimestamp(String filePath, String subLayer, boolean isView) throws IOException {
 		File folder = new File(filePath);
 		File[] listOfFiles = folder.listFiles();
 
@@ -272,7 +283,7 @@ public class Main {
 				String timestamp = fileName[0] + "$" + subLayer + Func.toDateTimeStr(new Date(), "yyyyMMddHHmmss");
 				String startup = '"' + timestamp + '"' + ",";
 				timestamp = "-- " + timestamp;
-				cleanView(listOfFiles[i].getPath(), timestamp);
+				cleanAndWriteSrcFile(listOfFiles[i].getPath(), timestamp, isView);
 
 				print(startup);
 			}
