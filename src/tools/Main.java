@@ -39,7 +39,11 @@ public class Main {
 		 */
 
 		String subLayer = "50";
-//
+
+		/**
+		 * chgFileType, addAndGetTimestamp 2-ыг дарааллуулж ашиглахаар нэрийг нь replace
+		 * хийгээгүй файл үлдэж байсан шийдэж амжаагүй
+		 */
 //		chgFileType(filePath, moduleCode);
 //		addAndGetTimestamp(filePath, subLayer);
 
@@ -48,6 +52,7 @@ public class Main {
 //		printFileName("D:\\nes-server\\\\irc.s\\db\\", subLayer);
 	}
 
+	// Лист жагсаалт болгох
 	public static void listStr(List<String> listStr) {
 
 		String res = "('" + String.join("', '", listStr) + "')";
@@ -55,17 +60,19 @@ public class Main {
 		print(res);
 	}
 
+	// sublayer төрлийн файлын нэр харуулах
 	public static void printFileName(String path, String subLayer) {
 		File folder = new File(path);
 		File[] listOfFiles = folder.listFiles();
 
 		for (int i = 0; i < listOfFiles.length; i++) {
-			if (listOfFiles[i].isFile() && listOfFiles[i].getName().startsWith(subLayer)) {			
+			if (listOfFiles[i].isFile() && listOfFiles[i].getName().startsWith(subLayer)) {
 				print('"' + listOfFiles[i].getName().split("\\.sql")[0] + '"' + ",");
 			}
 		}
 	}
 
+	// байлын замаас sublayer-т байгаа баазын өөрчилөлтүүдийг нэг мөр болгох
 	public static void onelineAll(String path, String subLayer) {
 		File folder = new File(path);
 		File[] listOfFiles = folder.listFiles();
@@ -187,6 +194,7 @@ public class Main {
 		writeToFile(filePath, sql);
 	}
 
+	// бэлэн байсан баазын өөрчилөлтөөс ерөнхий тохиргооны нэр авах
 	public static void getConfig(String filePath) {
 		List<String> l = readFileInList(filePath);
 
@@ -275,6 +283,7 @@ public class Main {
 		return str;
 	}
 
+	// patter-уудын хоорондох тэмдэгтийг авах
 	public static String getStrWithRegex(String str, String p1, String p2) {
 		String regexString = Pattern.quote(p1) + "(.*?)" + Pattern.quote(p2);
 
@@ -548,7 +557,7 @@ public class Main {
 	@SuppressWarnings("resource")
 	public static String qrToBase64(String qrPath) throws IOException {
 		String base64String = "";
-		
+
 		File file = new File(qrPath);
 		FileInputStream fileInputStreamReader = new FileInputStream(file);
 		byte[] bytes = new byte[(int) file.length()];
