@@ -65,7 +65,7 @@ public class Main {
 	// Table үүсгэх
 	public static void createTableDbChange() throws SQLException {
 		String path = "C:\\Users\\badamsereedari.t\\Documents\\table_scripts";
-		String scriptPath = "D:\\Tools\\CREATE_METADATA_SCRIPTS\\";
+		String scriptPath = "D:\\Tools\\tools\\Tools\\CREATE_METADATA_SCRIPTS\\";
 		String[] systemList = { "EOD" };
 
 		startUp = "";
