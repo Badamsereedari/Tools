@@ -1,0 +1,20 @@
+SELECT    'DECLARE BEGIN PK_GEN.MERGE_GEN_CONFIG ('
+       || CASE WHEN company_code = '0' THEN '''0'', ' ELSE '' END
+       || sys_no || ', '
+       || '''' || ITEM_CODE || ''', '
+       || '''' || ITEM_NAME || ''', '
+       || '''' || ITEM_NAME2 || ''', '
+       || '''' || ITEM_DESC || ''', '
+       || '''' || ITEM_DESC2 || ''', '
+       || ITEM_TYPE || ', '
+       || '''' || ITEM_MASK || ''', '
+       || ITEM_MIN || ', '
+       || ITEM_MAX || ', '
+       || READ_ONLY || ', '
+       || '''' || ITEM_VALUE || ''', '
+       || CAT_ID || ', '
+       || '''' || DICT_CODE || ''', '
+       || ORDER_NO || '); END;' as mrg_query
+  FROM gen_config
+ WHERE     company_code IN ('0', '10')
+       AND item_code IN ('AD_ADMIN')

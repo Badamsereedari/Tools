@@ -1,0 +1,23 @@
+select * from fee_const;
+
+select * from gen_system where sys_no = 1051;
+select * from adm_system where sys_no = 1051;
+select * from eod_systems where sys_no = 1051;
+
+select * from GEN_DICTIONARY where dict_code like 'FEE%';
+
+select * from adm_screen where sys_no = 1051;
+select * from adm_msg where sys_no = 1051;
+
+select * from adm_operation where sys_no = 1051;
+select * from adm_privilege where sys_no = 1051;
+select * from adm_oper_priv where oper_code like '1051%';
+
+select * from BULG_OBJ_TYPE where obj_type like 'FEE%';
+select * from BULG_OBJ_FIELD where obj_type like 'FEE%';
+
+select * from NES_CACHE_CONF where table_name like 'FEE%' or table_name like 'VW_FEE%';
+select * from FIN_TXN_CODE;
+select * from KNG_FUNCTION;
+
+select * from gen_config where sys_NO = 1051;

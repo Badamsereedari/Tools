@@ -8,6 +8,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Random;
+import java.util.Base64;
 
 public class Func {
 
@@ -542,5 +543,9 @@ public class Func {
 
 	public static boolean different(Object obj1, Object obj2) {
 		return !equal(obj1, obj2);
+	}
+
+	public static String encodeAsBase64(byte[] src) {
+		return Base64.getEncoder().encodeToString(src);
 	}
 }

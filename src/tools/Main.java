@@ -15,7 +15,6 @@ import java.nio.file.StandardCopyOption;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
@@ -32,17 +31,50 @@ public class Main {
 
 	public static void main(String[] args) throws Exception {
 
-		String filePath = "C:\\Users\\badamsereedari.t\\Documents\\GEN_VIEW";
-		String moduleCode = "gen.s";
+		String filePath = "C:\\Users\\badamsereedari.t\\Documents\\IRC_VIEW";
+		String moduleCode = "fee.s";
 		/**
 		 * 20 - Table, 30 - Type, 40 - Функц, 50 - View, 60 - Procedure, 70 - Package,
 		 * 80 - Data (constants, configs etc), 90 - Бусад (шаардлагатай үед ашиглана)
 		 */
 
 		String subLayer = "50";
+//
+//		chgFileType(filePath, moduleCode);
+//		addAndGetTimestamp(filePath, subLayer);
 
-		chgFileType(filePath, moduleCode);
-		addAndGetTimestamp(filePath, subLayer);
+//		oneline("D:\\nes-server\\pb.s\\db\\802003061452_pb.s_add_const.sql");
+
+//		printFileName("D:\\nes-server\\\\irc.s\\db\\", subLayer);
+	}
+
+	public static void listStr(List<String> listStr) {
+
+		String res = "('" + String.join("', '", listStr) + "')";
+
+		print(res);
+	}
+
+	public static void printFileName(String path, String subLayer) {
+		File folder = new File(path);
+		File[] listOfFiles = folder.listFiles();
+
+		for (int i = 0; i < listOfFiles.length; i++) {
+			if (listOfFiles[i].isFile() && listOfFiles[i].getName().startsWith(subLayer)) {			
+				print('"' + listOfFiles[i].getName().split("\\.sql")[0] + '"' + ",");
+			}
+		}
+	}
+
+	public static void onelineAll(String path, String subLayer) {
+		File folder = new File(path);
+		File[] listOfFiles = folder.listFiles();
+
+		for (int i = 0; i < listOfFiles.length; i++) {
+			if (listOfFiles[i].isFile() && listOfFiles[i].getName().startsWith(subLayer)) {
+				oneline(listOfFiles[i].getPath());
+			}
+		}
 	}
 
 	// regex шалгах
@@ -151,9 +183,22 @@ public class Main {
 		}
 		sql = sql.replaceAll("\\s+", " ");
 		sql = sql.replace("{newLine}", "\r\n");
-		
 
 		writeToFile(filePath, sql);
+	}
+
+	public static void getConfig(String filePath) {
+		List<String> l = readFileInList(filePath);
+
+		Iterator<String> itr = l.iterator();
+		while (itr.hasNext()) {
+			String newLine = itr.next();
+			newLine = newLine.replaceAll("\\s+", " ");
+
+			if (newLine != null && !newLine.equals("")) {
+				getStrWithRegex(newLine, "SYS_NO, '", "' as ITEM_CODE");
+			}
+		}
 	}
 
 	// Файлаас мөр өөр нь салгаж жагсаалт болгох
@@ -230,14 +275,17 @@ public class Main {
 		return str;
 	}
 
-	// base64 энкод хийх
-	public static String encodeAsBase64(byte[] src) {
-		return Base64.getEncoder().encodeToString(src);
-	}
+	public static String getStrWithRegex(String str, String p1, String p2) {
+		String regexString = Pattern.quote(p1) + "(.*?)" + Pattern.quote(p2);
 
-	// base64 дэкод хийх
-	public static byte[] decodeFromBase64(String src) throws IOException {
-		return Base64.getDecoder().decode(src);
+		Pattern pattern = Pattern.compile(regexString);
+		Matcher matcher = pattern.matcher(str);
+
+		while (matcher.find()) {
+			String textInBetween = matcher.group(1);
+			print(textInBetween);
+		}
+		return str;
 	}
 
 	// Текстээс огноо гаргаж авах
@@ -357,6 +405,9 @@ public class Main {
 			Path originalPath = file.toPath();
 			try {
 				Files.copy(originalPath, copied, StandardCopyOption.REPLACE_EXISTING);
+				if (!file.delete()) {
+					print("Failed to delete old file! file: " + file.getName());
+				}
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -491,5 +542,20 @@ public class Main {
 		}
 
 		return pdfPath;
+	}
+
+	// qr-ын зургийн замийг авж base64 болгох
+	@SuppressWarnings("resource")
+	public static String qrToBase64(String qrPath) throws IOException {
+		String base64String = "";
+		
+		File file = new File(qrPath);
+		FileInputStream fileInputStreamReader = new FileInputStream(file);
+		byte[] bytes = new byte[(int) file.length()];
+		fileInputStreamReader.read(bytes);
+
+		base64String = Func.encodeAsBase64(bytes);
+
+		return base64String;
 	}
 }
