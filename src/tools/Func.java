@@ -1,5 +1,6 @@
 package tools;
 
+import java.io.File;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.DateFormat;
@@ -547,5 +548,30 @@ public class Func {
 
 	public static String encodeAsBase64(byte[] src) {
 		return Base64.getEncoder().encodeToString(src);
+	}
+
+	public static String replaceFirst(String pStr, String pRepFirst, String pRepWith) {
+		if (null == pRepFirst || null == pStr || null == pRepWith)
+			return null;
+		if (pRepFirst.isEmpty() || pStr.isEmpty())
+			return pStr;
+
+		String ret = pStr;
+		for (int i = 0; i <= pStr.length() - pRepFirst.length(); i++) {
+			if (pRepFirst.equals(pStr.substring(i, i + pRepFirst.length()))) {
+				ret = pStr.substring(0, i) + pRepWith + pStr.substring(i + pRepFirst.length(), pStr.length());
+				break;
+			}
+		}
+		return ret;
+	}
+	
+	public static boolean checkAndCreateDir(String path) {
+		File dir = new File(path);
+		if (!dir.exists()) {
+			return dir.mkdirs();
+		} else {
+			return true;
+		}
 	}
 }

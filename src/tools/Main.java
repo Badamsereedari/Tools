@@ -12,12 +12,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.sql.SQLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -29,17 +31,20 @@ import com.itextpdf.tool.xml.XMLWorkerHelper;
 
 public class Main {
 
+	static HashMap<String, String> hm = new HashMap<String, String>();
+	static String startUp = "";
+	static String dbName = "NES_2043";
+
 	public static void main(String[] args) throws Exception {
 
-		String filePath = "C:\\Users\\badamsereedari.t\\Documents\\IRC_VIEW";
-		String moduleCode = "fee.s";
+		String path = "C:\\Users\\badamsereedari.t\\Documents\\table_scripts";
+		String moduleCode = "bl.s";
 		/**
 		 * 20 - Table, 30 - Type, 40 - Функц, 50 - View, 60 - Procedure, 70 - Package,
 		 * 80 - Data (constants, configs etc), 90 - Бусад (шаардлагатай үед ашиглана)
 		 */
 
 		String subLayer = "50";
-
 		/**
 		 * chgFileType, addAndGetTimestamp 2-ыг дарааллуулж ашиглахаар нэрийг нь replace
 		 * хийгээгүй файл үлдэж байсан шийдэж амжаагүй
@@ -48,8 +53,158 @@ public class Main {
 //		addAndGetTimestamp(filePath, subLayer);
 
 //		oneline("D:\\nes-server\\pb.s\\db\\802003061452_pb.s_add_const.sql");
+//
+//		onelineAll("D:\\nes-server\\bl.s\\db\\", "80");
+//		printFileName("D:\\nes-server\\bl.s\\db\\", "80");
 
-//		printFileName("D:\\nes-server\\\\irc.s\\db\\", subLayer);
+		createTableDbChange();
+		createViewDbChange();
+	}
+
+	// Table үүсгэх
+	public static void createTableDbChange() throws SQLException {
+		String path = "C:\\Users\\badamsereedari.t\\Documents\\table_scripts";
+		String[] systemList = { "EOD" };
+
+		startUp = "";
+
+		putModules();
+
+		Func.checkAndCreateDir(path);
+
+		for (String s : systemList) {
+
+			if (startUp != null && !startUp.equals("")) {
+				startUp = startUp + "\r\n" + "--------------------------- " + hm.get(s)
+						+ " ---------------------------";
+			} else {
+				startUp = " ---------------------------" + hm.get(s) + "--------------------------- ";
+			}
+
+			print(s + " модулын байзын файл үүсэгж эхлэлэ.");
+			String filePath = path + File.separator + hm.get(s);
+			Func.checkAndCreateDir(filePath);
+			filePath = filePath + File.separator + "src_" + hm.get(s).toLowerCase();
+
+			eqFromFile("D:\\Tools\\CREATE_METADATA_SCRIPTS\\1_CreateTable.sql", s, filePath, 1);
+			print(s + " модулын tables үүсгэв.");
+			eqFromFile("D:\\Tools\\CREATE_METADATA_SCRIPTS\\2_AddColumn.sql", s, filePath, 2);
+			print(s + " модулын columns үүсгэв.");
+			eqFromFile("D:\\Tools\\CREATE_METADATA_SCRIPTS\\3_ForeignKey.sql", s, filePath, 3);
+			print(s + " модулын foreign key үүсгэв.");
+			eqFromFile("D:\\Tools\\CREATE_METADATA_SCRIPTS\\4_Index.sql", s, filePath, 4);
+			print(s + " модулын indexe үүсгэв.");
+
+			startUp = startUp + "\r\n";
+		}
+
+		print(startUp);
+		writeToFile(path + File.separator + "startup_text.txt", startUp);
+	}
+
+	public static void eqFromFile(String filePath, String moduleName, String path, int dbType) throws SQLException {
+		String sql = "";
+		String textFile = "";
+
+		List<String> line = readFileInList(filePath);
+
+		Iterator<String> itr = line.iterator();
+		while (itr.hasNext()) {
+			sql = sql + itr.next() + " ";
+		}
+		sql = sql.replace("&&tableprefix", moduleName);
+
+		List<HashMap<String, Object>> lstRes = null;
+		HashMap<String, Object> tmpGeneratedParam = new HashMap<>();
+
+		lstRes = ExternalDB.exeSQL(sql, tmpGeneratedParam, "172.16.116.49:1521/nes", dbName, "gcm", -1);
+
+		for (HashMap<String, Object> l : lstRes) {
+			textFile = textFile + l.get("CREATESCRIPT").toString() + "{newLine}";
+		}
+		textFile = textFile.replace("{newLine}", "\r\n");
+
+		String timestamp = "src_" + hm.get(moduleName).toLowerCase();
+
+		switch (dbType) {
+		case 1:
+			timestamp = timestamp + "_tables";
+			path = path + "_tables.sql";
+			break;
+		case 2:
+			timestamp = timestamp + "_columns";
+			path = path + "_columns.sql";
+			break;
+		case 3:
+			timestamp = timestamp + "_foreignkeys";
+			path = path + "_foreignkeys.sql";
+			break;
+		case 4:
+			timestamp = timestamp + "_indexes";
+			path = path + "_indexes.sql";
+			break;
+		}
+
+		timestamp = timestamp + "$20" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
+		String su = '"' + timestamp + '"' + ",";
+		timestamp = "-- " + timestamp;
+
+		textFile = timestamp + "\r\n" + textFile;
+
+		if (textFile != null && !textFile.equals("")) {
+			writeToFile(path, textFile);
+		}
+
+		startUp = startUp + "\r\n" + su;
+	}
+
+	// View үүсгэх
+	public static void createViewDbChange() {
+		String path = "C:\\Users\\badamsereedari.t\\Documents\\view_scripts";
+		String[] systemList = { "EOD" };
+
+		startUp = "";
+
+		putModules();
+
+		Func.checkAndCreateDir(path);
+
+		for (String s : systemList) {
+			createViewDbChangeSingle(path, s);
+		}
+		writeToFile(path + File.separator + "startup_text.txt", startUp);
+
+	}
+
+	public static void createViewDbChangeSingle(String path, String moduleCode) {
+		if (startUp != null && !startUp.equals("")) {
+			startUp = startUp + "\r\n" + "--------------------------- " + hm.get(moduleCode)
+					+ " ---------------------------";
+		} else {
+			startUp = "--------------------------- " + hm.get(moduleCode) + " --------------------------- ";
+		}
+		String sql = "SELECT VIEW_NAME, TEXT_VC FROM ALL_VIEWS WHERE (UPPER(VIEW_NAME) LIKE UPPER('VW_" + moduleCode
+				+ "%') OR UPPER(VIEW_NAME) LIKE UPPER('VW_DICT_" + moduleCode + "%')) AND OWNER = '" + dbName + "'";
+		List<HashMap<String, Object>> lstRes = null;
+		HashMap<String, Object> tmpGeneratedParam = new HashMap<>();
+		lstRes = ExternalDB.exeSQL(sql, tmpGeneratedParam, "172.16.116.49:1521/nes", dbName, "gcm", -1);
+
+		for (HashMap<String, Object> l : lstRes) {
+			String viewName = l.get("VIEW_NAME").toString();
+			String viewQuery = l.get("TEXT_VC").toString();
+			String fileName = "src_" + hm.get(moduleCode).toLowerCase() + "_" + viewName.toLowerCase();
+			String timeStamp = fileName + "$50" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
+
+			viewQuery = "-- " + timeStamp + "\r\n" + "CREATE OR REPLACE VIEW " + viewName + "\r\n" + "AS\r\n"
+					+ viewQuery;
+
+			Func.checkAndCreateDir(path + File.separator + hm.get(moduleCode));
+			String filePath = path + File.separator + hm.get(moduleCode) + File.separator + fileName + ".sql";
+
+			writeToFile(filePath, viewQuery);
+			String su = '"' + timeStamp + '"' + ",";
+			startUp = startUp + "\r\n" + su;
+		}
 	}
 
 	// Лист жагсаалт болгох
@@ -341,7 +496,7 @@ public class Main {
 			if (listOfFiles[i].isFile()) {
 				String[] fileName = listOfFiles[i].getName().split("\\.sql");
 
-				String timestamp = fileName[0] + "$" + subLayer + Func.toDateTimeStr(new Date(), "yyyyMMddHHmmss");
+				String timestamp = fileName[0] + "$" + subLayer + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
 				String startup = '"' + timestamp + '"' + ",";
 				timestamp = "-- " + timestamp;
 				cleanAndWriteSrcFile(listOfFiles[i].getPath(), timestamp, isView);
@@ -566,5 +721,45 @@ public class Main {
 		base64String = Func.encodeAsBase64(bytes);
 
 		return base64String;
+	}
+
+	private static void putModules() {
+
+		hm.put("NOTE", "NOTE.S");
+		hm.put("EOD", "EOD.S");
+		hm.put("PL", "PL.S");
+		hm.put("CCY", "CCY.S");
+		hm.put("PB", "PB.S");
+		hm.put("GLIP", "GLIP.S");
+		hm.put("BCOM", "BCOM.C");
+		hm.put("CIF", "CIF.B");
+		hm.put("BAC", "BAC.B");
+		hm.put("CASH", "CASH.B");
+		hm.put("GL", "GL.B");
+		hm.put("CASA", "CASA.B");
+		hm.put("TD", "TD.B");
+		hm.put("CCA", "CCA.B");
+		hm.put("SHR", "SHR.B");
+		hm.put("CT", "CT.B");
+		hm.put("LOS", "LOS.B");
+		hm.put("COLL", "COLL.B");
+		hm.put("LINE", "LINE.B");
+		hm.put("LOAN", "LOAN.B");
+		hm.put("PRVN", "PRVN.B");
+		hm.put("CQM", "CQM.B");
+		hm.put("TLLR", "TLLR.A");
+		hm.put("PROC", "PROC.A");
+		hm.put("SDI", "SDI.A");
+		hm.put("CIB", "CIB.A");
+		hm.put("CCO", "CCO.A");
+		hm.put("BL", "BL.S");
+		hm.put("TMW", "TMW.M");
+		hm.put("NMW", "NMW.M");
+		hm.put("OD", "OD.B");
+		hm.put("APAY", "APAY.B");
+		hm.put("VATS", "VATS.S");
+		hm.put("RBD", "RBD.A");
+		hm.put("ARCV", "ARCV.B");
+		hm.put("ASR", "ASR.B");
 	}
 }
