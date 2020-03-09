@@ -58,12 +58,14 @@ public class Main {
 //		printFileName("D:\\nes-server\\bl.s\\db\\", "80");
 
 		createTableDbChange();
+		print("");
 		createViewDbChange();
 	}
 
 	// Table үүсгэх
 	public static void createTableDbChange() throws SQLException {
 		String path = "C:\\Users\\badamsereedari.t\\Documents\\table_scripts";
+		String scriptPath = "D:\\Tools\\CREATE_METADATA_SCRIPTS\\";
 		String[] systemList = { "EOD" };
 
 		startUp = "";
@@ -81,24 +83,23 @@ public class Main {
 				startUp = " ---------------------------" + hm.get(s) + "--------------------------- ";
 			}
 
-			print(s + " модулын байзын файл үүсэгж эхлэлэ.");
+			print(s + " модулын байзын файл үүсэгж эхлэв.");
 			String filePath = path + File.separator + hm.get(s);
 			Func.checkAndCreateDir(filePath);
 			filePath = filePath + File.separator + "src_" + hm.get(s).toLowerCase();
 
-			eqFromFile("D:\\Tools\\CREATE_METADATA_SCRIPTS\\1_CreateTable.sql", s, filePath, 1);
+			eqFromFile(scriptPath + "1_CreateTable.sql", s, filePath, 1);
 			print(s + " модулын tables үүсгэв.");
-			eqFromFile("D:\\Tools\\CREATE_METADATA_SCRIPTS\\2_AddColumn.sql", s, filePath, 2);
+			eqFromFile(scriptPath + "2_AddColumn.sql", s, filePath, 2);
 			print(s + " модулын columns үүсгэв.");
-			eqFromFile("D:\\Tools\\CREATE_METADATA_SCRIPTS\\3_ForeignKey.sql", s, filePath, 3);
+			eqFromFile(scriptPath + "3_ForeignKey.sql", s, filePath, 3);
 			print(s + " модулын foreign key үүсгэв.");
-			eqFromFile("D:\\Tools\\CREATE_METADATA_SCRIPTS\\4_Index.sql", s, filePath, 4);
+			eqFromFile(scriptPath + "4_Index.sql", s, filePath, 4);
 			print(s + " модулын indexe үүсгэв.");
 
 			startUp = startUp + "\r\n";
 		}
 
-		print(startUp);
 		writeToFile(path + File.separator + "startup_text.txt", startUp);
 	}
 
@@ -183,6 +184,9 @@ public class Main {
 		} else {
 			startUp = "--------------------------- " + hm.get(moduleCode) + " --------------------------- ";
 		}
+		
+		print(moduleCode + " модулын view-ын файл үүсэгж эхлэв");
+		
 		String sql = "SELECT VIEW_NAME, TEXT_VC FROM ALL_VIEWS WHERE (UPPER(VIEW_NAME) LIKE UPPER('VW_" + moduleCode
 				+ "%') OR UPPER(VIEW_NAME) LIKE UPPER('VW_DICT_" + moduleCode + "%')) AND OWNER = '" + dbName + "'";
 		List<HashMap<String, Object>> lstRes = null;
@@ -205,6 +209,8 @@ public class Main {
 			String su = '"' + timeStamp + '"' + ",";
 			startUp = startUp + "\r\n" + su;
 		}
+		
+		print(moduleCode + " модулын view-ын файл үүсэгж дууслаа");
 	}
 
 	// Лист жагсаалт болгох

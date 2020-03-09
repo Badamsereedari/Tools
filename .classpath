@@ -2,9 +2,9 @@
 <classpath>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="lib" path="D:/Workspace/tools/jsoup-1.12.1.jar"/>
-	<classpathentry kind="lib" path="D:/Workspace/tools/itextpdf-5.5.13.jar"/>
-	<classpathentry kind="lib" path="D:/Workspace/tools/xmlworker-5.5.13.jar"/>
-	<classpathentry kind="lib" path="D:/Workspace/tools/commons-codec-1.14.jar"/>
+	<classpathentry kind="lib" path="D:/Tools/tools/Tools/jar/itextpdf-5.5.13.jar"/>
+	<classpathentry kind="lib" path="D:/Tools/tools/Tools/jar/jsoup-1.12.1.jar"/>
+	<classpathentry kind="lib" path="D:/Tools/tools/Tools/jar/ojdbc8.jar"/>
+	<classpathentry kind="lib" path="D:/Tools/tools/Tools/jar/xmlworker-5.5.13.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
