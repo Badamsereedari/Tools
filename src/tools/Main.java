@@ -277,7 +277,7 @@ public class Main {
 		case RAM_SYSTEM:
 			type = DBchangeType.GEN_SYSTEM;
 			typeName = "system";
-			sql = Const.SQL_SYSTEM_1;
+			sql = Const.SQL_GEN_SYSTEM;
 			break;
 		case OPER:
 		case PRIV:
@@ -312,13 +312,13 @@ public class Main {
 			sql = replaceSqlSysMod(Const.SQL_BULG_FIELD, DBchangeType.BULG_FIELD, moduleCode);
 			outPutText = outPutText + executeQuery(sql, DBchangeType.BULG_FIELD);
 		} else if (type.equals(DBchangeType.GEN_SYSTEM)) {
-			sql = replaceSqlSysMod(Const.SQL_SYSTEM_2, DBchangeType.ADM_SYSTEM, moduleCode);
+			sql = replaceSqlSysMod(Const.SQL_ADM_SYSTEM, DBchangeType.ADM_SYSTEM, moduleCode);
 			outPutText = outPutText + executeQuery(sql, DBchangeType.ADM_SYSTEM);
 
-			sql = replaceSqlSysMod(Const.SQL_SYSTEM_3, DBchangeType.EOD_SYSTEM, moduleCode);
+			sql = replaceSqlSysMod(Const.SQL_EOD_SYSTEM, DBchangeType.EOD_SYSTEM, moduleCode);
 			outPutText = outPutText + executeQuery(sql, DBchangeType.EOD_SYSTEM);
 
-			sql = replaceSqlSysMod(Const.SQL_SYSTEM_4, DBchangeType.RAM_SYSTEM, moduleCode);
+			sql = replaceSqlSysMod(Const.SQL_RAM_SYSTEM, DBchangeType.RAM_SYSTEM, moduleCode);
 			outPutText = outPutText + executeQuery(sql, DBchangeType.RAM_SYSTEM);
 		}
 

@@ -3,10 +3,10 @@ package tools;
 public class Const {
 	public static final String SQL_CONST = "SELECT * FROM {module}_CONST";
 	public static final String SQL_DICTIONARY = "SELECT * FROM GEN_DICTIONARY WHERE DICT_CODE LIKE '{module}%'";
-	public static final String SQL_SYSTEM_1 = "SELECT * FROM GEN_SYSTEM WHERE SYS_NO = {system}";
-	public static final String SQL_SYSTEM_2 = "SELECT * FROM ADM_SYSTEM WHERE SYS_NO = {system}";
-	public static final String SQL_SYSTEM_3 = "SELECT * FROM EOD_SYSTEMS WHERE SYS_NO = {system}";
-	public static final String SQL_SYSTEM_4 = "SELECT * FROM RAM_SYSTEMS WHERE SYS_NO = {system}";
+	public static final String SQL_GEN_SYSTEM = "SELECT * FROM GEN_SYSTEM WHERE SYS_NO = {system}";
+	public static final String SQL_ADM_SYSTEM = "SELECT * FROM ADM_SYSTEM WHERE SYS_NO = {system}";
+	public static final String SQL_EOD_SYSTEM = "SELECT * FROM EOD_SYSTEMS WHERE SYS_NO = {system}";
+	public static final String SQL_RAM_SYSTEM = "SELECT * FROM RAM_SYSTEMS WHERE SYS_NO = {system}";
 	public static final String SQL_MSG = "SELECT * FROM ADM_MSG WHERE SYS_NO = {system}";
 	public static final String SQL_SCREEN = "SELECT * FROM ADM_SCREEN WHERE SYS_NO = {system}";
 	public static final String SQL_CACHE = "SELECT * FROM NES_CACHE_CONF WHERE TABLE_NAME LIKE '{module}%' OR TABLE_NAME LIKE 'VW_{module}%'";
