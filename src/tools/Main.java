@@ -32,50 +32,39 @@ import com.itextpdf.tool.xml.XMLWorkerHelper;
 public class Main {
 
 	static HashMap<String, String> hm = new HashMap<String, String>();
+	static HashMap<String, String> ms = new HashMap<String, String>();
+
+	/**
+	 * 20 - Table, 30 - Type, 40 - Функц, 50 - View, 60 - Procedure, 70 - Package,
+	 * 80 - Data (constants, configs etc), 90 - Бусад (шаардлагатай үед ашиглана)
+	 */
+	static String subLayer = "50";
+	static String moduleCode = "bl.s";
+
 	static String startUp = "";
 	static String dbName = "NES_2043";
+	static String CREATE_SCRIPT_PATH = "D:\\Tools\\tools\\Tools\\CREATE_METADATA_SCRIPTS\\";
+	static String FILE_OUTPUT_PATH = "C:\\Users\\badamsereedari.t\\Documents\\nes";
 
 	public static void main(String[] args) throws Exception {
 
-		String path = "C:\\Users\\badamsereedari.t\\Documents\\table_scripts";
-		String moduleCode = "bl.s";
-		/**
-		 * 20 - Table, 30 - Type, 40 - Функц, 50 - View, 60 - Procedure, 70 - Package,
-		 * 80 - Data (constants, configs etc), 90 - Бусад (шаардлагатай үед ашиглана)
-		 */
+		// Ажилуулах системүүд
+		String[] systemList = { "EOD" };
 
-		String subLayer = "50";
-		/**
-		 * chgFileType, addAndGetTimestamp 2-ыг дарааллуулж ашиглахаар нэрийг нь replace
-		 * хийгээгүй файл үлдэж байсан шийдэж амжаагүй
-		 */
-//		chgFileType(filePath, moduleCode);
-//		addAndGetTimestamp(filePath, subLayer);
-
-//		oneline("D:\\nes-server\\pb.s\\db\\802003061452_pb.s_add_const.sql");
-//
-//		onelineAll("D:\\nes-server\\bl.s\\db\\", "80");
-//		printFileName("D:\\nes-server\\bl.s\\db\\", "80");
-
-		createTableDbChange();
-		print("");
-		createViewDbChange();
+		createFullDbChange(systemList);
+		print("Дууслаа");
 	}
 
-	// Table үүсгэх
-	public static void createTableDbChange() throws SQLException {
-		String path = "C:\\Users\\badamsereedari.t\\Documents\\table_scripts";
-		String scriptPath = "D:\\Tools\\tools\\Tools\\CREATE_METADATA_SCRIPTS\\";
-		String[] systemList = { "EOD" };
+	public static void createFullDbChange(String[] systemList) throws SQLException {
+		String path = FILE_OUTPUT_PATH;
+
+		putModules();
+		putModuleSystem();
+		Func.checkAndCreateDir(path);
 
 		startUp = "";
 
-		putModules();
-
-		Func.checkAndCreateDir(path);
-
 		for (String s : systemList) {
-
 			if (startUp != null && !startUp.equals("")) {
 				startUp = startUp + "\r\n" + "--------------------------- " + hm.get(s)
 						+ " ---------------------------";
@@ -83,27 +72,65 @@ public class Main {
 				startUp = " ---------------------------" + hm.get(s) + "--------------------------- ";
 			}
 
-			print(s + " модулын байзын файл үүсэгж эхлэв.");
-			String filePath = path + File.separator + hm.get(s);
-			Func.checkAndCreateDir(filePath);
-			filePath = filePath + File.separator + "src_" + hm.get(s).toLowerCase();
+			/**
+			 * type: (1 - const), (2 - dictionary), (3 - msg), (4 - screen), (5 - system),
+			 * (6 - oper_priv), (7 - cache), (8 - bulg)
+			 */
+			// Table
+			createTableDbChange(path, s);
 
-			eqFromFile(scriptPath + "1_CreateTable.sql", s, filePath, 1);
-			print(s + " модулын tables үүсгэв.");
-			eqFromFile(scriptPath + "2_AddColumn.sql", s, filePath, 2);
-			print(s + " модулын columns үүсгэв.");
-			eqFromFile(scriptPath + "3_ForeignKey.sql", s, filePath, 3);
-			print(s + " модулын foreign key үүсгэв.");
-			eqFromFile(scriptPath + "4_Index.sql", s, filePath, 4);
-			print(s + " модулын indexe үүсгэв.");
+			// Config
+			createConfigDbChange(path, s);
 
-			startUp = startUp + "\r\n";
+			// View
+			createViewDbChange(path, s);
+
+			// System
+			createDataDbChange(path, s, DBchangeType.GEN_SYSTEM);
+
+			// Const
+			createDataDbChange(path, s, DBchangeType.CONST);
+
+			// Dictionary
+			createDataDbChange(path, s, DBchangeType.DICT);
+
+			// Msg
+			createDataDbChange(path, s, DBchangeType.MSG);
+
+			// Screen
+			createDataDbChange(path, s, DBchangeType.SCREEN);
+
+			// Operation & Privilege
+			createDataDbChange(path, s, DBchangeType.OPER);
+
+			// Bulg
+			createDataDbChange(path, s, DBchangeType.BULG_TYPE);
 		}
-
 		writeToFile(path + File.separator + "startup_text.txt", startUp);
 	}
 
-	public static void eqFromFile(String filePath, String moduleName, String path, int dbType) throws SQLException {
+	// Table үүсгэх
+	public static void createTableDbChange(String path, String s) throws SQLException {
+		print(s + " модулын байзын файл үүсэгж эхлэв.");
+		String filePath = path + File.separator + hm.get(s);
+		Func.checkAndCreateDir(filePath);
+		filePath = filePath + File.separator + "src_" + hm.get(s).toLowerCase();
+
+		executeFromFile(CREATE_SCRIPT_PATH + "1_CreateTable.sql", s, filePath, 1);
+		print(s + " модулын tables үүсгэв.");
+		executeFromFile(CREATE_SCRIPT_PATH + "2_AddColumn.sql", s, filePath, 2);
+		print(s + " модулын columns үүсгэв.");
+		executeFromFile(CREATE_SCRIPT_PATH + "3_ForeignKey.sql", s, filePath, 3);
+		print(s + " модулын foreign key үүсгэв.");
+		executeFromFile(CREATE_SCRIPT_PATH + "4_Index.sql", s, filePath, 4);
+		print(s + " модулын indexe үүсгэв.");
+
+		startUp = startUp + "\r\n";
+		print("");
+	}
+
+	public static void executeFromFile(String filePath, String moduleName, String path, int dbType)
+			throws SQLException {
 		String sql = "";
 		String textFile = "";
 
@@ -148,7 +175,7 @@ public class Main {
 
 		timestamp = timestamp + "$20" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
 		String su = '"' + timestamp + '"' + ",";
-		timestamp = "-- " + timestamp;
+		timestamp = "--" + timestamp;
 
 		textFile = timestamp + "\r\n" + textFile;
 
@@ -160,33 +187,9 @@ public class Main {
 	}
 
 	// View үүсгэх
-	public static void createViewDbChange() {
-		String path = "C:\\Users\\badamsereedari.t\\Documents\\view_scripts";
-		String[] systemList = { "EOD" };
-
-		startUp = "";
-
-		putModules();
-
-		Func.checkAndCreateDir(path);
-
-		for (String s : systemList) {
-			createViewDbChangeSingle(path, s);
-		}
-		writeToFile(path + File.separator + "startup_text.txt", startUp);
-
-	}
-
-	public static void createViewDbChangeSingle(String path, String moduleCode) {
-		if (startUp != null && !startUp.equals("")) {
-			startUp = startUp + "\r\n" + "--------------------------- " + hm.get(moduleCode)
-					+ " ---------------------------";
-		} else {
-			startUp = "--------------------------- " + hm.get(moduleCode) + " --------------------------- ";
-		}
-		
+	public static void createViewDbChange(String path, String moduleCode) {
 		print(moduleCode + " модулын view-ын файл үүсэгж эхлэв");
-		
+
 		String sql = "SELECT VIEW_NAME, TEXT_VC FROM ALL_VIEWS WHERE (UPPER(VIEW_NAME) LIKE UPPER('VW_" + moduleCode
 				+ "%') OR UPPER(VIEW_NAME) LIKE UPPER('VW_DICT_" + moduleCode + "%')) AND OWNER = '" + dbName + "'";
 		List<HashMap<String, Object>> lstRes = null;
@@ -196,10 +199,11 @@ public class Main {
 		for (HashMap<String, Object> l : lstRes) {
 			String viewName = l.get("VIEW_NAME").toString();
 			String viewQuery = l.get("TEXT_VC").toString();
+			viewQuery = viewQuery.replace("\n", "\r\n");
 			String fileName = "src_" + hm.get(moduleCode).toLowerCase() + "_" + viewName.toLowerCase();
 			String timeStamp = fileName + "$50" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
 
-			viewQuery = "-- " + timeStamp + "\r\n" + "CREATE OR REPLACE VIEW " + viewName + "\r\n" + "AS\r\n"
+			viewQuery = "--" + timeStamp + "\r\n" + "CREATE OR REPLACE VIEW " + viewName + "\r\n" + "AS\r\n"
 					+ viewQuery;
 
 			Func.checkAndCreateDir(path + File.separator + hm.get(moduleCode));
@@ -209,8 +213,437 @@ public class Main {
 			String su = '"' + timeStamp + '"' + ",";
 			startUp = startUp + "\r\n" + su;
 		}
-		
+
 		print(moduleCode + " модулын view-ын файл үүсэгж дууслаа");
+		print("");
+	}
+
+	// View үүсгэх
+	public static void createConfigDbChange(String path, String moduleCode) {
+		print(moduleCode + " модулын config-ын файл үүсэгж эхлэв");
+		String outPutText = "";
+
+		String sql = Const.SQL_MERGE_CONFIG.replace("{system}", ms.get(moduleCode));
+		List<HashMap<String, Object>> lstRes = null;
+		HashMap<String, Object> tmpGeneratedParam = new HashMap<>();
+		lstRes = ExternalDB.exeSQL(sql, tmpGeneratedParam, "172.16.116.49:1521/nes", dbName, "gcm", -1);
+
+		for (HashMap<String, Object> l : lstRes) {
+			outPutText = outPutText + l.get("MRG_QUERY").toString() + "{newLine}";
+		}
+		outPutText = outPutText.replace("{newLine}", "\r\n");
+
+		String timeStamp = "80" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
+		String fileName = timeStamp + "_" + hm.get(moduleCode).toLowerCase() + "_config";
+
+		Func.checkAndCreateDir(path + File.separator + hm.get(moduleCode));
+		String filePath = path + File.separator + hm.get(moduleCode) + File.separator + fileName + ".sql";
+
+		writeToFile(filePath, outPutText);
+		String su = '"' + fileName + '"' + ",";
+		startUp = startUp + "\r\n" + su;
+
+		print(moduleCode + " модулын config-ын файл үүсэгж дууслаа");
+		print("");
+	}
+
+	/**
+	 * type: (1 - const), (2 - dictionary), (3 - msg), (4 - screen), (5 - system),
+	 * (6 - oper_priv), (7 - cache), (8 - bulg)
+	 */
+	private static void createDataDbChange(String path, String moduleCode, DBchangeType type) {
+		String typeName = "";
+		String outPutText = "";
+		String sql = "";
+
+		switch (type) {
+		case CONST:
+			typeName = "const";
+			sql = Const.SQL_CONST;
+			sql = sql.replace("{module}", moduleCode);
+			break;
+		case DICT:
+			typeName = "dictionary";
+			sql = Const.SQL_DICTIONARY;
+			break;
+		case MSG:
+			typeName = "msg";
+			sql = Const.SQL_MSG;
+			break;
+		case SCREEN:
+			typeName = "screen";
+			sql = Const.SQL_SCREEN;
+			break;
+		case GEN_SYSTEM:
+		case ADM_SYSTEM:
+		case EOD_SYSTEM:
+		case RAM_SYSTEM:
+			type = DBchangeType.GEN_SYSTEM;
+			typeName = "system";
+			sql = Const.SQL_SYSTEM_1;
+			break;
+		case OPER:
+		case PRIV:
+		case OPER_PRIV:
+			type = DBchangeType.OPER;
+			typeName = "oper_priv";
+			sql = Const.SQL_OPER;
+			break;
+		case CACHE:
+			typeName = "cache";
+			sql = Const.SQL_CACHE;
+			break;
+		case BULG_TYPE:
+		case BULG_FIELD:
+			type = DBchangeType.BULG_TYPE;
+			typeName = "bulg";
+			sql = Const.SQL_BULG_TYPE;
+			break;
+		}
+
+		print(moduleCode + " модулын " + typeName + "-ын файл үүсэгж эхлэв");
+
+		sql = replaceSqlSysMod(sql, type, moduleCode);
+		outPutText = executeQuery(sql, type);
+		if (type.equals(DBchangeType.OPER)) {
+			sql = replaceSqlSysMod(Const.SQL_PRIV, DBchangeType.PRIV, moduleCode);
+			outPutText = outPutText + executeQuery(sql, DBchangeType.PRIV);
+
+			sql = replaceSqlSysMod(Const.SQL_OPER_PRIV, DBchangeType.OPER_PRIV, moduleCode);
+			outPutText = outPutText + executeQuery(sql, DBchangeType.OPER_PRIV);
+		} else if (type.equals(DBchangeType.BULG_TYPE)) {
+			sql = replaceSqlSysMod(Const.SQL_BULG_FIELD, DBchangeType.BULG_FIELD, moduleCode);
+			outPutText = outPutText + executeQuery(sql, DBchangeType.BULG_FIELD);
+		} else if (type.equals(DBchangeType.GEN_SYSTEM)) {
+			sql = replaceSqlSysMod(Const.SQL_SYSTEM_2, DBchangeType.ADM_SYSTEM, moduleCode);
+			outPutText = outPutText + executeQuery(sql, DBchangeType.ADM_SYSTEM);
+
+			sql = replaceSqlSysMod(Const.SQL_SYSTEM_3, DBchangeType.EOD_SYSTEM, moduleCode);
+			outPutText = outPutText + executeQuery(sql, DBchangeType.EOD_SYSTEM);
+
+			sql = replaceSqlSysMod(Const.SQL_SYSTEM_4, DBchangeType.RAM_SYSTEM, moduleCode);
+			outPutText = outPutText + executeQuery(sql, DBchangeType.RAM_SYSTEM);
+		}
+
+		if (outPutText != null && !outPutText.equals("")) {
+			outPutText = outPutText.replace("{newLine}", "\r\n");
+			String timeStamp = "80" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
+			String fileName = timeStamp + "_" + hm.get(moduleCode).toLowerCase() + "_" + typeName;
+
+			Func.checkAndCreateDir(path + File.separator + hm.get(moduleCode));
+			String filePath = path + File.separator + hm.get(moduleCode) + File.separator + fileName + ".sql";
+
+			writeToFile(filePath, outPutText);
+			String su = '"' + fileName + '"' + ",";
+			startUp = startUp + "\r\n" + su;
+		}
+		print(moduleCode + " модулын " + typeName + "-ын файл үүсэгж дууслаа");
+		print("");
+	}
+
+	private static String replaceSqlSysMod(String sql, DBchangeType type, String module) {
+		switch (type) {
+		case CONST:
+		case DICT:
+		case CACHE:
+		case BULG_TYPE:
+		case BULG_FIELD:
+			sql = sql.replace("{module}", module);
+			break;
+		case MSG:
+		case SCREEN:
+		case GEN_SYSTEM:
+		case ADM_SYSTEM:
+		case EOD_SYSTEM:
+		case RAM_SYSTEM:
+		case OPER:
+		case PRIV:
+		case OPER_PRIV:
+			sql = sql.replace("{system}", ms.get(module));
+			break;
+		}
+
+		return sql;
+	}
+
+	private static String executeQuery(String sql, DBchangeType type) {
+		String outPutText = "";
+		List<HashMap<String, Object>> lstRes = null;
+		HashMap<String, Object> tmpGeneratedParam = new HashMap<>();
+		lstRes = ExternalDB.exeSQL(sql, tmpGeneratedParam, "172.16.116.49:1521/nes", dbName, "gcm", -1);
+
+		for (HashMap<String, Object> l : lstRes) {
+			String text = "";
+			/**
+			 * type: (1 - const), (2 - dictionary), (3 - msg), (4 - screen), (5 - system),
+			 * (6 - oper_priv), (7 - cache), (8 - bulg)
+			 */
+			switch (type) {
+			case CONST:
+				text = replaceQueryConst(l);
+				break;
+			case DICT:
+				text = replaceQueryDictionary(l);
+				break;
+			case MSG:
+				text = replaceQueryMsg(l);
+				break;
+			case SCREEN:
+				text = replaceQueryScreen(l);
+				break;
+			case GEN_SYSTEM:
+				text = replaceQuerySystem1(l);
+				break;
+			case OPER:
+				text = replaceQueryOper(l);
+				break;
+			case CACHE:
+				text = replaceQueryCache(l);
+				break;
+			case BULG_TYPE:
+				text = replaceQueryBulgType(l);
+				break;
+			case BULG_FIELD:
+				text = replaceQueryBulgField(l);
+				break;
+			case PRIV:
+				text = replaceQueryPriv(l);
+				break;
+			case OPER_PRIV:
+				text = replaceQueryOperPriv(l);
+				break;
+			case ADM_SYSTEM:
+			case EOD_SYSTEM:
+			case RAM_SYSTEM:
+				text = replaceQuerySystem2(l, type);
+				break;
+			}
+
+			if (text != null && !text.equals("")) {
+				outPutText = outPutText + text + "{newLine}";
+			}
+		}
+
+		return outPutText;
+	}
+
+	private static String replaceQueryConst(HashMap<String, Object> l) {
+		String mergeScript = Const.SQL_MERGE_CONST;
+
+		String tableName = Func.toString(l.get("TABLE_NAME"));
+		String colName = Func.toString(l.get("COL_NAME"));
+		String colValue = Func.toString(l.get("COL_VALUE"));
+		String name = Func.toString(l.get("NAME"));
+		String name2 = Func.toString(l.get("NAME2"));
+		String orderNo = Func.toString(l.get("ORDER_NO"));
+
+		mergeScript = mergeScript.replace("{param1}", tableName).replace("{param2}", colName)
+				.replace("{param3}", colValue).replace("{param4}", name).replace("{param5}", name2)
+				.replace("{param6}", orderNo);
+
+		return mergeScript;
+	}
+
+	private static String replaceQueryDictionary(HashMap<String, Object> l) {
+		String mergeScript = Const.SQL_MERGE_DICTIONARY;
+
+		String dictCode = Func.toString(l.get("DICT_CODE"));
+		String viewName = Func.toString(l.get("VIEW_NAME"));
+		String tableName = Func.toString(l.get("TABLE_NAME"));
+		String isMulti = Func.toString(l.get("IS_MULTILANG"));
+
+		mergeScript = mergeScript.replace("{param1}", dictCode).replace("{param2}", viewName)
+				.replace("{param3}", tableName).replace("{param4}", isMulti);
+
+		return mergeScript;
+	}
+
+	private static String replaceQueryMsg(HashMap<String, Object> l) {
+		String mergeScript = Const.SQL_MERGE_MSG;
+
+		String msgCode = Func.toString(l.get("MSG_CODE"));
+		String sysNo = Func.toString(l.get("SYS_NO"));
+		String msgType = Func.toString(l.get("MSG_TYPE"));
+		String msgDesc = Func.toString(l.get("MSG_DESC"));
+		String msgDesc2 = Func.toString(l.get("MSG_DESC2"));
+
+		mergeScript = mergeScript.replace("{param1}", msgCode).replace("{param2}", sysNo).replace("{param3}", msgType)
+				.replace("{param4}", msgDesc).replace("{param5}", msgDesc2);
+
+		return mergeScript;
+	}
+
+	private static String replaceQueryScreen(HashMap<String, Object> l) {
+		String mergeScript = Const.SQL_MERGE_SCREEN;
+
+		String scrCode = Func.toString(l.get("SCR_CODE"));
+		String sysNo = Func.toString(l.get("SYS_NO"));
+		String scrKey = Func.toString(l.get("SCR_KEY"));
+		String scrName = Func.toString(l.get("SCR_NAME"));
+		String scrName2 = Func.toString(l.get("SCR_NAME2"));
+		String scrDesc = Func.toString(l.get("SCR_DESC"));
+		String isMenu = Func.toString(l.get("IS_MENU"));
+		String menuName = Func.toString(l.get("MENU_NAME"));
+		String menuName2 = Func.toString(l.get("MENU_NAME2"));
+
+		mergeScript = mergeScript.replace("{param1}", scrCode).replace("{param2}", sysNo).replace("{param3}", scrKey)
+				.replace("{param4}", scrName).replace("{param5}", scrName2).replace("{param6}", scrDesc)
+				.replace("{param7}", isMenu).replace("{param8}", menuName).replace("{param9}", menuName2);
+
+		return mergeScript;
+	}
+
+	private static String replaceQuerySystem1(HashMap<String, Object> l) {
+		String mergeScript = Const.SQL_MERGE_SYSTEM_1;
+
+		String sysNo = Func.toString(l.get("SYS_NO"));
+		String name = Func.toString(l.get("NAME"));
+		String name2 = Func.toString(l.get("NAME2"));
+		String status = Func.toString(l.get("STATUS"));
+		String orderNo = Func.toString(l.get("ORDER_NO"));
+
+		mergeScript = mergeScript.replace("{param1}", sysNo).replace("{param2}", name).replace("{param3}", name2)
+				.replace("{param4}", status).replace("{param5}", orderNo);
+
+		return mergeScript;
+	}
+
+	private static String replaceQuerySystem2(HashMap<String, Object> l, DBchangeType type) {
+		String mergeScript = "";
+		String sysNo = Func.toString(l.get("SYS_NO"));
+
+		if (type.toString().equals("adm_system")) {
+			mergeScript = Const.SQL_MERGE_SYSTEM_2;
+		} else if (type.toString().equals("eod_system")) {
+			if (checkSystem(sysNo, true)) {
+				mergeScript = Const.SQL_MERGE_SYSTEM_3;
+			} else {
+				return "";
+			}
+		} else {
+			if (checkSystem(sysNo, false)) {
+				mergeScript = Const.SQL_MERGE_SYSTEM_4;
+			} else {
+				return "";
+			}
+		}
+
+		mergeScript = mergeScript.replace("{param1}", sysNo);
+
+		return mergeScript;
+	}
+
+	private static String replaceQueryOper(HashMap<String, Object> l) {
+		String mergeScript = Const.SQL_MERGE_OPER;
+
+		String operCode = Func.toString(l.get("OPER_CODE"));
+		String name = Func.toString(l.get("NAME"));
+		String name2 = Func.toString(l.get("NAME2"));
+		String sysNo = Func.toString(l.get("SYS_NO"));
+		String lookup = Func.toString(l.get("LOOKUP"));
+		String funcName = Func.toString(l.get("FUNC_NAME"));
+		String auditLevel = Func.toString(l.get("AUDIT_LEVEL"));
+		String logReqData = Func.toString(l.get("LOG_REQ_DATA"));
+		String logResData = Func.toString(l.get("LOG_RES_DATA"));
+		String location = Func.toString(l.get("LOCATION"));
+
+		mergeScript = mergeScript.replace("{param1}", operCode).replace("{param2}", name).replace("{param3}", name2)
+				.replace("{param4}", sysNo).replace("{param5}", lookup).replace("{param6}", funcName)
+				.replace("{param7}", auditLevel).replace("{param8}", logReqData).replace("{param9}", logResData)
+				.replace("{param10}", location);
+
+		return mergeScript;
+	}
+
+	private static String replaceQueryCache(HashMap<String, Object> l) {
+		String mergeScript = Const.SQL_MERGE_CACHE;
+
+		String tableName = Func.toString(l.get("TABLE_NAME"));
+		String pkName = Func.toString(l.get("PK_NAME"));
+		String expTime = Func.toString(l.get("EXP_TIME"));
+		String cacheSize = Func.toString(l.get("CACHE_SIZE"));
+
+		mergeScript = mergeScript.replace("{param1}", tableName).replace("{param2}", pkName)
+				.replace("{param3}", expTime).replace("{param4}", cacheSize);
+
+		return mergeScript;
+	}
+
+	private static String replaceQueryBulgType(HashMap<String, Object> l) {
+		String mergeScript = Const.SQL_MERGE_BULG_TYPE;
+
+		String objType = Func.toString(l.get("OBJ_TYPE"));
+		String name = Func.toString(l.get("NAME"));
+		String name2 = Func.toString(l.get("NAME2"));
+		String purgeCond = Func.toString(l.get("PURGE_COND"));
+		String keepDays = Func.toString(l.get("KEEP_DAYS"));
+		String keepTxns = Func.toString(l.get("KEEP_TXNS"));
+
+		mergeScript = mergeScript.replace("{param1}", objType).replace("{param2}", name).replace("{param3}", name2)
+				.replace("{param4}", purgeCond).replace("{param5}", keepDays).replace("{param6}", keepTxns);
+
+		return mergeScript;
+	}
+
+	private static String replaceQueryBulgField(HashMap<String, Object> l) {
+		String mergeScript = Const.SQL_MERGE_BULG_FIELD;
+
+		String objType = Func.toString(l.get("OBJ_TYPE"));
+		String fieldId = Func.toString(l.get("FIELD_ID"));
+		String name = Func.toString(l.get("NAME"));
+		String name2 = Func.toString(l.get("NAME2"));
+
+		mergeScript = mergeScript.replace("{param1}", objType).replace("{param2}", fieldId).replace("{param3}", name)
+				.replace("{param4}", name2);
+
+		return mergeScript;
+	}
+
+	private static String replaceQueryPriv(HashMap<String, Object> l) {
+		String mergeScript = Const.SQL_MERGE_PRIV;
+
+		String privCode = Func.toString(l.get("PRIV_CODE"));
+		String sysNo = Func.toString(l.get("SYS_NO"));
+		String name = Func.toString(l.get("NAME"));
+		String name2 = Func.toString(l.get("NAME2"));
+		String privType = Func.toString(l.get("PRIV_TYPE"));
+		String parentPrivCode = Func.toString(l.get("PARENT_PRIV_CODE"));
+
+		mergeScript = mergeScript.replace("{param1}", privCode).replace("{param2}", sysNo).replace("{param3}", name)
+				.replace("{param4}", name2).replace("{param5}", privType).replace("{param6}", parentPrivCode);
+
+		return mergeScript;
+	}
+
+	private static String replaceQueryOperPriv(HashMap<String, Object> l) {
+		String mergeScript = Const.SQL_MERGE_OPER_PRIV;
+
+		String operCode = Func.toString(l.get("OPER_CODE"));
+		String privCode = Func.toString(l.get("PRIV_CODE"));
+
+		mergeScript = mergeScript.replace("{param1}", operCode).replace("{param2}", privCode);
+
+		return mergeScript;
+	}
+
+	private static boolean checkSystem(String sysNo, boolean isEod) {
+		boolean retBool = false;
+		List<HashMap<String, Object>> lstRes = null;
+		HashMap<String, Object> tmpGeneratedParam = new HashMap<>();
+
+		String sql = "select * from ram_systems where sys_no = " + sysNo;
+
+		if (isEod) {
+			sql = "select * from eod_systems where sys_no = " + sysNo;
+		}
+
+		lstRes = ExternalDB.exeSQL(sql, tmpGeneratedParam, "172.16.116.49:1521/nes", dbName, "gcm", -1);
+
+		if (lstRes != null && !lstRes.isEmpty()) {
+			retBool = true;
+		}
+
+		return retBool;
 	}
 
 	// Лист жагсаалт болгох
@@ -730,12 +1163,14 @@ public class Main {
 	}
 
 	private static void putModules() {
-
+		hm.put("GEN", "GEN.S");
 		hm.put("NOTE", "NOTE.S");
+		hm.put("PB", "PB.S");
+		hm.put("IRC", "IRC.S");
+		hm.put("FEE", "FEE.S");
 		hm.put("EOD", "EOD.S");
 		hm.put("PL", "PL.S");
 		hm.put("CCY", "CCY.S");
-		hm.put("PB", "PB.S");
 		hm.put("GLIP", "GLIP.S");
 		hm.put("BCOM", "BCOM.C");
 		hm.put("CIF", "CIF.B");
@@ -767,5 +1202,48 @@ public class Main {
 		hm.put("RBD", "RBD.A");
 		hm.put("ARCV", "ARCV.B");
 		hm.put("ASR", "ASR.B");
+	}
+
+	private static void putModuleSystem() {
+		ms.put("EOD", "1062");
+		ms.put("IRC", "1014");
+		ms.put("CIF", "1015");
+		ms.put("PL", "1392");
+		ms.put("CCY", "1013");
+		ms.put("PB", "1362");
+		ms.put("FEE", "1051");
+		ms.put("GLIP", "1011");
+		ms.put("BCOM", "1390");
+		ms.put("COLL", "1309");
+		ms.put("CIF", "1020");
+		ms.put("BAC", "1301");
+		ms.put("CASH", "1412");
+		ms.put("GL", "1030");
+		ms.put("CASA", "1305");
+		ms.put("TD", "1306");
+		ms.put("CCA", "1319");
+		ms.put("SHR", "1310");
+		ms.put("CT", "1302");
+		ms.put("LOS", "1312");
+		ms.put("COLL", "1309");
+		ms.put("LINE", "1314");
+		ms.put("LOAN", "1308");
+		ms.put("PRVN", "1303");
+		ms.put("CQM", "1324");
+		ms.put("TLLR", "1360");
+		ms.put("PROC", "1364");
+		ms.put("SDI", "1311");
+		ms.put("CIB", "1313");
+		ms.put("CCO", "1317");
+		ms.put("BL", "1053");
+		ms.put("BL", "1053");
+		ms.put("TMW", "1350");
+		ms.put("NMW", "1351");
+		ms.put("OD", "1307");
+		ms.put("APAY", "1327");
+		ms.put("VATS", "1033");
+		ms.put("RBD", "1066");
+		ms.put("ARCV", "1326");
+		ms.put("ASR", "1212");
 	}
 }
