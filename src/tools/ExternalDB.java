@@ -18,8 +18,6 @@ public class ExternalDB {
 	private static final int DEFAULT_PAGE_SIZE = 1000;
 	private static final String ORACLE_DRIVER = "oracle.jdbc.driver.OracleDriver";
 	private static final String CONN_STR = "jdbc:oracle:thin:@";
-	private static final String LOG_FILE_NAME = "ExternalDB";
-	private static final String DB_INFO_STR = "DB URL: %s, DB User: %s, DB Pass: %s";
 
 	public static List<HashMap<String, Object>> exeSQL(String sql, List<Object> params, String dbUrl, String dbUser,
 			String dbPass) {
@@ -122,7 +120,7 @@ public class ExternalDB {
 			}
 		}
 		if (pageSize < count) {
-			System.out.print("Тоо нь хуудаслалтын тооноос бага байна.");
+			System.err.println("Тоо нь хуудаслалтын тооноос бага байна.");
 		}
 		return ret;
 	}

@@ -31,31 +31,31 @@ import com.itextpdf.tool.xml.XMLWorkerHelper;
 
 public class Main {
 
-	static HashMap<String, String> hm = new HashMap<String, String>();
-	static HashMap<String, String> ms = new HashMap<String, String>();
+	static HashMap<String, String> hm = new HashMap<>();
+	static HashMap<String, String> ms = new HashMap<>();
 
 	/**
-	 * 20 - Table, 30 - Type, 40 - Функц, 50 - View, 60 - Procedure, 70 - Package,
-	 * 80 - Data (constants, configs etc), 90 - Бусад (шаардлагатай үед ашиглана)
+	 * subLayer: 20 - Table, 30 - Type, 40 - Функц, 50 - View, 60 - Procedure, 70 -
+	 * Package, 80 - Data (constants, configs etc), 90 - Бусад (шаардлагатай үед
+	 * ашиглана)
 	 */
-	static String subLayer = "50";
-	static String moduleCode = "bl.s";
 
 	static String startUp = "";
+
 	static String dbName = "NES_2043";
+	static String dbPassword = "gcm";
+	static String dbPort = "172.16.116.49:1521/nes";
+
 	static String CREATE_SCRIPT_PATH = "D:\\Tools\\tools\\Tools\\CREATE_METADATA_SCRIPTS\\";
 	static String FILE_OUTPUT_PATH = "C:\\Users\\badamsereedari.t\\Documents\\nes";
 
+	static String[] systemList = { "EOD", "PL", "CCY", "GLIP" };
+
 	public static void main(String[] args) throws Exception {
-
-		// Ажилуулах системүүд
-		String[] systemList = { "EOD" };
-
-		createFullDbChange(systemList);
-		print("Дууслаа");
+		createFullDbChange();
 	}
 
-	public static void createFullDbChange(String[] systemList) throws SQLException {
+	public static void createFullDbChange() throws SQLException {
 		String path = FILE_OUTPUT_PATH;
 
 		putModules();
@@ -63,6 +63,8 @@ public class Main {
 		Func.checkAndCreateDir(path);
 
 		startUp = "";
+
+		print("*******************************Баазын өөрчилөлтийг үүсгэж эхлэв*******************************");
 
 		for (String s : systemList) {
 			if (startUp != null && !startUp.equals("")) {
@@ -107,6 +109,8 @@ public class Main {
 			createDataDbChange(path, s, DBchangeType.BULG_TYPE);
 		}
 		writeToFile(path + File.separator + "startup_text.txt", startUp);
+
+		print("*******************************Баазын өөрчилөлтийг үүсгэж дууслаа*******************************");
 	}
 
 	// Table үүсгэх
@@ -142,10 +146,7 @@ public class Main {
 		}
 		sql = sql.replace("&&tableprefix", moduleName);
 
-		List<HashMap<String, Object>> lstRes = null;
-		HashMap<String, Object> tmpGeneratedParam = new HashMap<>();
-
-		lstRes = ExternalDB.exeSQL(sql, tmpGeneratedParam, "172.16.116.49:1521/nes", dbName, "gcm", -1);
+		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
 
 		for (HashMap<String, Object> l : lstRes) {
 			textFile = textFile + l.get("CREATESCRIPT").toString() + "{newLine}";
@@ -192,9 +193,7 @@ public class Main {
 
 		String sql = "SELECT VIEW_NAME, TEXT_VC FROM ALL_VIEWS WHERE (UPPER(VIEW_NAME) LIKE UPPER('VW_" + moduleCode
 				+ "%') OR UPPER(VIEW_NAME) LIKE UPPER('VW_DICT_" + moduleCode + "%')) AND OWNER = '" + dbName + "'";
-		List<HashMap<String, Object>> lstRes = null;
-		HashMap<String, Object> tmpGeneratedParam = new HashMap<>();
-		lstRes = ExternalDB.exeSQL(sql, tmpGeneratedParam, "172.16.116.49:1521/nes", dbName, "gcm", -1);
+		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
 
 		for (HashMap<String, Object> l : lstRes) {
 			String viewName = l.get("VIEW_NAME").toString();
@@ -224,9 +223,7 @@ public class Main {
 		String outPutText = "";
 
 		String sql = Const.SQL_MERGE_CONFIG.replace("{system}", ms.get(moduleCode));
-		List<HashMap<String, Object>> lstRes = null;
-		HashMap<String, Object> tmpGeneratedParam = new HashMap<>();
-		lstRes = ExternalDB.exeSQL(sql, tmpGeneratedParam, "172.16.116.49:1521/nes", dbName, "gcm", -1);
+		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
 
 		for (HashMap<String, Object> l : lstRes) {
 			outPutText = outPutText + l.get("MRG_QUERY").toString() + "{newLine}";
@@ -368,9 +365,7 @@ public class Main {
 
 	private static String executeQuery(String sql, DBchangeType type) {
 		String outPutText = "";
-		List<HashMap<String, Object>> lstRes = null;
-		HashMap<String, Object> tmpGeneratedParam = new HashMap<>();
-		lstRes = ExternalDB.exeSQL(sql, tmpGeneratedParam, "172.16.116.49:1521/nes", dbName, "gcm", -1);
+		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
 
 		for (HashMap<String, Object> l : lstRes) {
 			String text = "";
@@ -628,8 +623,6 @@ public class Main {
 
 	private static boolean checkSystem(String sysNo, boolean isEod) {
 		boolean retBool = false;
-		List<HashMap<String, Object>> lstRes = null;
-		HashMap<String, Object> tmpGeneratedParam = new HashMap<>();
 
 		String sql = "select * from ram_systems where sys_no = " + sysNo;
 
@@ -637,7 +630,7 @@ public class Main {
 			sql = "select * from eod_systems where sys_no = " + sysNo;
 		}
 
-		lstRes = ExternalDB.exeSQL(sql, tmpGeneratedParam, "172.16.116.49:1521/nes", dbName, "gcm", -1);
+		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
 
 		if (lstRes != null && !lstRes.isEmpty()) {
 			retBool = true;
@@ -1215,7 +1208,6 @@ public class Main {
 		ms.put("GLIP", "1011");
 		ms.put("BCOM", "1390");
 		ms.put("COLL", "1309");
-		ms.put("CIF", "1020");
 		ms.put("BAC", "1301");
 		ms.put("CASH", "1412");
 		ms.put("GL", "1030");
@@ -1225,7 +1217,6 @@ public class Main {
 		ms.put("SHR", "1310");
 		ms.put("CT", "1302");
 		ms.put("LOS", "1312");
-		ms.put("COLL", "1309");
 		ms.put("LINE", "1314");
 		ms.put("LOAN", "1308");
 		ms.put("PRVN", "1303");
@@ -1236,7 +1227,6 @@ public class Main {
 		ms.put("CIB", "1313");
 		ms.put("CCO", "1317");
 		ms.put("BL", "1053");
-		ms.put("BL", "1053");
 		ms.put("TMW", "1350");
 		ms.put("NMW", "1351");
 		ms.put("OD", "1307");
@@ -1245,5 +1235,10 @@ public class Main {
 		ms.put("RBD", "1066");
 		ms.put("ARCV", "1326");
 		ms.put("ASR", "1212");
+	}
+
+	private static List<HashMap<String, Object>> ExecuteQuery(String sql) {
+		HashMap<String, Object> tmpGeneratedParam = new HashMap<>();
+		return ExternalDB.exeSQL(sql, tmpGeneratedParam, dbPort, dbName, dbPassword, -1);
 	}
 }
