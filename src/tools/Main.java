@@ -489,7 +489,7 @@ public class Main {
 	}
 
 	private static String replaceQuerySystem1(HashMap<String, Object> l) {
-		String mergeScript = Const.SQL_MERGE_SYSTEM_1;
+		String mergeScript = Const.SQL_MERGE_GEN_SYSTEM;
 
 		String sysNo = Func.toString(l.get("SYS_NO"));
 		String name = Func.toString(l.get("NAME"));
@@ -507,17 +507,17 @@ public class Main {
 		String mergeScript = "";
 		String sysNo = Func.toString(l.get("SYS_NO"));
 
-		if (type.toString().equals("adm_system")) {
-			mergeScript = Const.SQL_MERGE_SYSTEM_2;
-		} else if (type.toString().equals("eod_system")) {
+		if (type.equals(DBchangeType.ADM_SYSTEM)) {
+			mergeScript = Const.SQL_MERGE_ADM_SYSTEM;
+		} else if (type.equals(DBchangeType.EOD_SYSTEM)) {
 			if (checkSystem(sysNo, true)) {
-				mergeScript = Const.SQL_MERGE_SYSTEM_3;
+				mergeScript = Const.SQL_MERGE_EOD_SYSTEM;
 			} else {
 				return "";
 			}
 		} else {
 			if (checkSystem(sysNo, false)) {
-				mergeScript = Const.SQL_MERGE_SYSTEM_4;
+				mergeScript = Const.SQL_MERGE_RAM_SYSTEM;
 			} else {
 				return "";
 			}
