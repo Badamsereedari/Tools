@@ -116,15 +116,21 @@ public class Main {
 
 		// Bulg
 		createDataDbChange(path, DBchangeType.BULG_TYPE);
-		
+
 		// PlOper
 		createPlOperDbChange(path);
-		
+
 		// NmwOperation
 		createNmwOperationDbChange(path);
-		
+
 		// NmwOperCol
 		createNmwOperColDbChange(path);
+
+		// ProdType
+		createProdTypeDbChange(path);
+
+		// BalTypes
+		createBalTypesDbChange(path);
 	}
 
 	// Table үүсгэх
@@ -204,8 +210,6 @@ public class Main {
 
 	// View үүсгэх
 	public static void createViewDbChange(String path) {
-		print(module + " модулын view-ын файл үүсэгж эхлэв");
-
 		String sql = Const.SQL_VIEW.replace("{module}", module).replace("{dbName}", dbName);
 		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
 
@@ -233,7 +237,6 @@ public class Main {
 
 	// View үүсгэх
 	public static void createConfigDbChange(String path) {
-		print(module + " модулын config-ын файл үүсэгж эхлэв");
 		String outPutText = "";
 
 		String sql = Const.SQL_MERGE_CONFIG.replace("{system}", ms.get(module));
@@ -261,9 +264,9 @@ public class Main {
 		print(module + " модулын config-ын файл үүсэгж дууслаа");
 		print("");
 	}
+
 	// PlOper үүсгэх
 	public static void createPlOperDbChange(String path) {
-		print(module + " модулын PlOper-ын файл үүсэгж эхлэв");
 		String outPutText = "";
 
 		String sql = Const.SQL_MERGE_PL_OPER.replace("{system}", ms.get(module));
@@ -291,9 +294,9 @@ public class Main {
 		print(module + " модулын PlOper-ын файл үүсэгж дууслаа");
 		print("");
 	}
+
 	// NmwOperCol үүсгэх
 	public static void createNmwOperColDbChange(String path) {
-		print(module + " модулын NmwOperCol-ын файл үүсэгж эхлэв");
 		String outPutText = "";
 
 		String sql = Const.SQL_MERGE_NMW_OPER_COL.replace("{system}", ms.get(module));
@@ -321,9 +324,9 @@ public class Main {
 		print(module + " модулын NmwOperCol-ын файл үүсэгж дууслаа");
 		print("");
 	}
+
 	// NmwOperation үүсгэх
 	public static void createNmwOperationDbChange(String path) {
-		print(module + " модулын NmwOperation-ын файл үүсэгж эхлэв");
 		String outPutText = "";
 
 		String sql = Const.SQL_MERGE_NMW_OPERATIONS.replace("{system}", ms.get(module));
@@ -349,6 +352,66 @@ public class Main {
 
 		}
 		print(module + " модулын NmwOperation-ын файл үүсэгж дууслаа");
+		print("");
+	}
+
+	// ProdType үүсгэх
+	public static void createProdTypeDbChange(String path) {
+		String outPutText = "";
+
+		String sql = Const.SQL_MERGE_PROD_TYPE.replace("{system}", ms.get(module));
+		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
+
+		if (lstRes != null && !lstRes.isEmpty()) {
+			for (HashMap<String, Object> l : lstRes) {
+				outPutText = outPutText + l.get("MRG_QUERY").toString() + "{newLine}";
+			}
+			outPutText = outPutText.replace("{newLine}", "\r\n");
+
+			if (outPutText != null && !outPutText.equals("")) {
+				String timeStamp = "80" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
+				String fileName = timeStamp + "_" + hm.get(module).toLowerCase() + "_prod_type";
+
+				Func.checkAndCreateDir(path + File.separator + hm.get(module));
+				String filePath = path + File.separator + hm.get(module) + File.separator + fileName + ".sql";
+
+				writeToFile(filePath, outPutText);
+				String su = '"' + fileName + '"' + ",";
+				startUp = startUp + "\r\n" + su;
+			}
+
+		}
+		print(module + " модулын ProdType-ын файл үүсэгж дууслаа");
+		print("");
+	}
+
+	// BalTypes үүсгэх
+	public static void createBalTypesDbChange(String path) {
+		String outPutText = "";
+
+		String sql = Const.SQL_MERGE_BAL_TYPES.replace("{system}", ms.get(module));
+		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
+
+		if (lstRes != null && !lstRes.isEmpty()) {
+			for (HashMap<String, Object> l : lstRes) {
+				outPutText = outPutText + l.get("MRG_QUERY").toString() + "{newLine}";
+			}
+			outPutText = outPutText.replace("{newLine}", "\r\n");
+
+			if (outPutText != null && !outPutText.equals("")) {
+				String timeStamp = "80" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
+				String fileName = timeStamp + "_" + hm.get(module).toLowerCase() + "_bal_types";
+
+				Func.checkAndCreateDir(path + File.separator + hm.get(module));
+				String filePath = path + File.separator + hm.get(module) + File.separator + fileName + ".sql";
+
+				writeToFile(filePath, outPutText);
+				String su = '"' + fileName + '"' + ",";
+				startUp = startUp + "\r\n" + su;
+			}
+
+		}
+		print(module + " модулын BalTypes-ын файл үүсэгж дууслаа");
 		print("");
 	}
 

@@ -103,8 +103,30 @@ public class Const {
 			+ " '); END;~~' as mrg_query   FROM gen_config  WHERE company_code IN (SELECT '0' AS company_code FROM DUAL UNION ALL SELECT MIN (company_code) "
 			+ " company_code FROM gen_company WHERE company_code <> '0') AND sys_no = {system}";
 
-	public static final String SQL_MERGE_PROD_TYPE = "";
-	public static final String SQL_MERGE_BAL_TYPES = "";
+	public static final String SQL_MERGE_PROD_TYPE = "select 'MERGE INTO BCOM_PROD_TYPE A USING (SELECT ' || '''' || PROD_TYPE || ''' AS PROD_TYPE, ' "
+			+ "|| SYS_NO  || ' AS SYS_NO, '    || '''' || NAME || ''' AS NAME, ' || '''' || NAME2 || ''' AS NAME2, ' || '''' || PRINC_BAL_TYPE_CODE "
+			+ "|| ''' AS PRINC_BAL_TYPE_CODE, ' || '''' || INT_BAL_TYPE_CODE || ''' AS INT_BAL_TYPE_CODE, ' || '''' || P_FINE_BAL_TYPE_CODE "
+			+ "|| ''' AS P_FINE_BAL_TYPE_CODE, ' || '''' || I_FINE_BAL_TYPE_CODE || ''' AS I_FINE_BAL_TYPE_CODE ' || 'FROM DUAL) B ON "
+			+ "(A.PROD_TYPE = B.PROD_TYPE) WHEN NOT MATCHED THEN INSERT (PROD_TYPE, SYS_NO, NAME, NAME2, PRINC_BAL_TYPE_CODE, INT_BAL_TYPE_CODE, "
+			+ "P_FINE_BAL_TYPE_CODE, I_FINE_BAL_TYPE_CODE) VALUES (B.PROD_TYPE, B.SYS_NO, B.NAME, B.NAME2, B.PRINC_BAL_TYPE_CODE, B.INT_BAL_TYPE_CODE, "
+			+ "B.P_FINE_BAL_TYPE_CODE, B.I_FINE_BAL_TYPE_CODE)~~' mrg_query from BCOM_PROD_TYPE where sys_no = {system}";
+	public static final String SQL_MERGE_BAL_TYPES = "select 'MERGE INTO BCOM_BAL_TYPES A USING (SELECT ' || '''' || PROD_TYPE || ''' AS PROD_TYPE, ' "
+			+ "|| '''' || BAL_TYPE_CODE || ''' AS BAL_TYPE_CODE, ' || '''' || NAME || ''' AS NAME, ' || '''' || NAME2 || ''' AS NAME2, ' || '''' "
+			+ "|| WITH_GL || ''' AS WITH_GL, ' || '''' || CALC_INT || ''' AS CALC_INT, ' || '''' || BAL_CHAR || ''' AS BAL_CHAR, ' || SYS_NO  "
+			+ "|| ' AS SYS_NO, ' || IS_OFFSET  || ' AS IS_OFFSET, ' || '''' || ON_OFF || ''' AS ON_OFF, ' || IN_CUST_STMT  || ' AS IN_CUST_STMT, ' "
+			+ "|| IN_BANK_STMT  || ' AS IN_BANK_STMT, ' || TOTAL_CUST_STMT  || ' AS TOTAL_CUST_STMT, ' || TOTAL_BANK_STMT  || ' AS TOTAL_BANK_STMT, ' "
+			+ "|| IN_SLIP  || ' AS IN_SLIP, ' || '''' || SPECIAL_BAL_TYPE || ''' AS SPECIAL_BAL_TYPE, ' || '''' || DEPR_OPT || ''' AS DEPR_OPT, ' "
+			+ "|| '''' || DEPR_DEST_BAL_TYPE_CODE || ''' AS DEPR_DEST_BAL_TYPE_CODE, ' || '''' || DEPR_CALC_BAL_TYPE_CODE || ''' AS DEPR_CALC_BAL_TYPE_CODE, ' "
+			+ "|| '''' || RATE_TYPE || ''' AS RATE_TYPE, ' || ALLOW_NEG_BAL  || ' AS ALLOW_NEG_BAL, ' || HAS_VBAL  || ' AS HAS_VBAL, ' || '''' "
+			+ "|| FINE_INT_TYPE_CODE || ''' AS FINE_INT_TYPE_CODE, ' || '''' || FINE_BAL_TYPE_CODE || ''' AS FINE_BAL_TYPE_CODE, ' || REVAL_OPT  "
+			+ "|| ' AS REVAL_OPT, ' || '''' || DEP_PROC_TYPE || ''' AS DEP_PROC_TYPE ' || 'FROM DUAL) B ON (A.PROD_TYPE = B.PROD_TYPE and "
+			+ "A.BAL_TYPE_CODE = B.BAL_TYPE_CODE) WHEN NOT MATCHED THEN INSERT (PROD_TYPE, BAL_TYPE_CODE, NAME, NAME2, WITH_GL, CALC_INT, "
+			+ "BAL_CHAR, SYS_NO, IS_OFFSET, ON_OFF, IN_CUST_STMT, IN_BANK_STMT, TOTAL_CUST_STMT, TOTAL_BANK_STMT, IN_SLIP, SPECIAL_BAL_TYPE, "
+			+ "DEPR_OPT, DEPR_DEST_BAL_TYPE_CODE, DEPR_CALC_BAL_TYPE_CODE, RATE_TYPE, ALLOW_NEG_BAL, HAS_VBAL, FINE_INT_TYPE_CODE, FINE_BAL_TYPE_CODE, "
+			+ "REVAL_OPT, DEP_PROC_TYPE) VALUES (B.PROD_TYPE, B.BAL_TYPE_CODE, B.NAME, B.NAME2, B.WITH_GL, B.CALC_INT, B.BAL_CHAR, B.SYS_NO, B.IS_OFFSET, "
+			+ "B.ON_OFF, B.IN_CUST_STMT, B.IN_BANK_STMT, B.TOTAL_CUST_STMT, B.TOTAL_BANK_STMT, B.IN_SLIP, B.SPECIAL_BAL_TYPE, B.DEPR_OPT, B.DEPR_DEST_BAL_TYPE_CODE, "
+			+ "B.DEPR_CALC_BAL_TYPE_CODE, B.RATE_TYPE, B.ALLOW_NEG_BAL, B.HAS_VBAL, B.FINE_INT_TYPE_CODE, B.FINE_BAL_TYPE_CODE, B.REVAL_OPT, B.DEP_PROC_TYPE)~~' "
+			+ "as mrg_query from BCOM_BAL_TYPES where sys_no = {system}";
 	public static final String SQL_MERGE_TXN_CODE = "";
 	public static final String SQL_MERGE_BAL_TYPE = "";
 	public static final String SQL_MERGE_INT = "";
@@ -126,7 +148,7 @@ public class Const {
 	public static final String SQL_MERGE_NMW_OPERATIONS = "select 'MERGE INTO NMW_OPERATIONS A USING (SELECT ' || '''' || OPER_CODE || ''' AS OPER_CODE, ' "
 			+ "|| '''' || SOURCE_TYPE || ''' AS SOURCE_TYPE, ' || '''' || SCR_CODE || ''' AS SCR_CODE, ' || '''' || MAIN_SCR_CODE || ''' AS MAIN_SCR_CODE ' "
 			+ "|| 'FROM DUAL) B ON (A.OPER_CODE = B.OPER_CODE) WHEN NOT MATCHED THEN INSERT (OPER_CODE, SOURCE_TYPE, SCR_CODE, MAIN_SCR_CODE) VALUES (B.OPER_CODE, "
-			+ "B.SOURCE_TYPE, B.SCR_CODE, B.MAIN_SCR_CODE)~~~' mrg_query from NMW_OPERATIONS where oper_code like '{system}%'";
+			+ "B.SOURCE_TYPE, B.SCR_CODE, B.MAIN_SCR_CODE)~~' mrg_query from NMW_OPERATIONS where oper_code like '{system}%'";
 
 	private Const() {
 	}
