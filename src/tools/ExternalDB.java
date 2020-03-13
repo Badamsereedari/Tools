@@ -15,26 +15,24 @@ import java.util.Map.Entry;
 public class ExternalDB {
 
 	public static final int EXECUTION_TIMEOUT = 60 * 10; // Seconds
-	private static final int DEFAULT_PAGE_SIZE = 1000;
 	private static final String ORACLE_DRIVER = "oracle.jdbc.driver.OracleDriver";
 	private static final String CONN_STR = "jdbc:oracle:thin:@";
 
 	public static List<HashMap<String, Object>> exeSQL(String sql, List<Object> params, String dbUrl, String dbUser,
 			String dbPass) {
-		return exeSQL(sql, params, dbUrl, dbUser, dbPass, -1);
+		return exeSQL(sql, params, dbUrl, dbUser, dbPass, 0);
 	}
 
 	public static List<HashMap<String, Object>> exeSQL(String sql, List<Object> params, String dbUrl, String dbUser,
-			String dbPass, int pageSize) {
-		return exeSQL(sql, params, dbUrl, dbUser, dbPass, 0, pageSize);
+			String dbPass, int queryTimeout) {
+		return exeSQL(sql, params, dbUrl, dbUser, dbPass, 0, false);
 	}
 
 	public static List<HashMap<String, Object>> exeSQL(String sql, List<Object> params, String dbUrl, String dbUser,
-			String dbPass, int queryTimeout, int pageSize) {
+			String dbPass, int queryTimeout, boolean isIndex) {
 
 		List<HashMap<String, Object>> ret = new ArrayList<>();
 		java.sql.Connection cn = null;
-		int count = 0;
 		try {
 			DriverManager.registerDriver(new oracle.jdbc.driver.OracleDriver());
 			Class.forName(ORACLE_DRIVER);
@@ -51,6 +49,19 @@ public class ExternalDB {
 			List<String> cols = new ArrayList<>();
 
 			cn = DriverManager.getConnection(CONN_STR + dbUrl, dbUser, dbPass);
+
+			if (isIndex) {
+				PreparedStatement ps2 = cn.prepareStatement(Const.SQL_INDEX);
+				if (queryTimeout <= 0) {
+					ps2.setQueryTimeout(EXECUTION_TIMEOUT);
+				} else {
+					ps2.setQueryTimeout(queryTimeout);
+				}
+
+				ps2.executeQuery();
+				ps2.close();
+				ps2 = null;
+			}
 
 			ps = cn.prepareStatement(sql);
 			if (queryTimeout <= 0)
@@ -71,18 +82,11 @@ public class ExternalDB {
 				cols.add(rs.getMetaData().getColumnName(i));
 			}
 			while (rs.next()) {
-				count++;
 				HashMap<String, Object> row = new HashMap<>();
 				for (String col : cols) {
 					row.put(col, rs.getObject(col));
 				}
 				ret.add(row);
-
-				if (pageSize <= 0)
-					pageSize = DEFAULT_PAGE_SIZE;
-
-				if (pageSize < count)
-					break;
 			}
 
 			rs.close();
@@ -119,9 +123,6 @@ public class ExternalDB {
 				}
 			}
 		}
-		if (pageSize < count) {
-			System.err.println("Тоо нь хуудаслалтын тооноос бага байна.");
-		}
 		return ret;
 	}
 
@@ -129,11 +130,11 @@ public class ExternalDB {
 
 	public static List<HashMap<String, Object>> exeSQL(String sql, Map<String, Object> params, String dbUrl,
 			String dbUser, String dbPass) {
-		return exeSQL(sql, params, dbUrl, dbUser, dbPass, -1);
+		return exeSQL(sql, params, dbUrl, dbUser, dbPass, false);
 	}
 
 	public static List<HashMap<String, Object>> exeSQL(String sql, Map<String, Object> params, String dbUrl,
-			String dbUser, String dbPass, int pageSize) {
+			String dbUser, String dbPass, boolean isIndex) {
 
 		// ========== Check params ==========
 		if (null == sql)
@@ -186,6 +187,6 @@ public class ExternalDB {
 		}
 		// --------------------------
 
-		return exeSQL(newSql, newParams, dbUrl, dbUser, dbPass, pageSize);
+		return exeSQL(newSql, newParams, dbUrl, dbUser, dbPass, 0, isIndex);
 	}
 }

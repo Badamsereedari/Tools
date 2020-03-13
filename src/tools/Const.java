@@ -16,6 +16,13 @@ public class Const {
 	public static final String SQL_OPER = "SELECT * FROM ADM_OPERATION WHERE SYS_NO = {system}";
 	public static final String SQL_PRIV = "SELECT * FROM ADM_PRIVILEGE WHERE SYS_NO = {system}";
 	public static final String SQL_OPER_PRIV = "SELECT * FROM ADM_OPER_PRIV WHERE OPER_CODE LIKE '{system}%'";
+	public static final String SQL_VIEW = "SELECT VIEW_NAME, TEXT_VC FROM ALL_VIEWS WHERE (UPPER(VIEW_NAME) LIKE UPPER('VW_{module}%') "
+			+ " OR UPPER(VIEW_NAME) LIKE UPPER('VW_DICT_{module}%')) AND OWNER = '{dbName}'";
+	public static final String SQL_PROC_OPER = "SELECT * FROM ADM_OPERATION WHERE SYS_NO = 1364 and upper(lookup) like upper('%{module}BatchRemote%')";
+	public static final String SQL_INDEX = "BEGIN DBMS_METADATA.set_transform_param (DBMS_METADATA.session_transform, 'SQLTERMINATOR', TRUE); "
+			+ " DBMS_METADATA.set_transform_param (DBMS_METADATA.session_transform, 'PRETTY', TRUE); DBMS_METADATA.set_transform_param "
+			+ " (DBMS_METADATA.session_transform, 'SEGMENT_ATTRIBUTES', FALSE); DBMS_METADATA.set_transform_param "
+			+ " (DBMS_METADATA.session_transform, 'STORAGE', FALSE); END;";
 
 	public static final String SQL_MERGE_CONST = "MERGE INTO {module}_CONST A USING (SELECT '{param1}' "
 			+ " as TABLE_NAME, '{param2}' as COL_NAME, '{param3}' "
@@ -64,7 +71,8 @@ public class Const {
 			+ " A.MENU_NAME = B.MENU_NAME, A.MENU_NAME2 = B.MENU_NAME2~~";
 	public static final String SQL_MERGE_CACHE = "MERGE INTO NES_CACHE_CONF A USING (SELECT '{param1}' as TABLE_NAME, '{param2}' as "
 			+ " PK_NAME, {param3} as EXP_TIME, {param4} as CACHE_SIZE FROM DUAL) B ON (A.TABLE_NAME = B.TABLE_NAME) WHEN NOT MATCHED "
-			+ " THEN INSERT ( TABLE_NAME, PK_NAME, EXP_TIME, CACHE_SIZE) VALUES ( B.TABLE_NAME, B.PK_NAME, B.EXP_TIME, B.CACHE_SIZE)~~";
+			+ " THEN INSERT ( TABLE_NAME, PK_NAME, EXP_TIME, CACHE_SIZE) VALUES ( B.TABLE_NAME, B.PK_NAME, B.EXP_TIME, B.CACHE_SIZE) "
+			+ " WHEN MATCHED THEN UPDATE SET A.PK_NAME = B.PK_NAME~~";
 	public static final String SQL_MERGE_BULG_TYPE = "MERGE INTO BULG_OBJ_TYPE A USING (SELECT '{param1}' as OBJ_TYPE, '{param2}' as "
 			+ " NAME, '{param3}' as NAME2, '{param4}' as PURGE_COND, {param5} as KEEP_DAYS, {param6} as KEEP_TXNS FROM DUAL) B ON "
 			+ " (A.OBJ_TYPE = B.OBJ_TYPE) WHEN NOT MATCHED THEN INSERT (OBJ_TYPE, NAME, NAME2, PURGE_COND, KEEP_DAYS, KEEP_TXNS) VALUES "
@@ -94,6 +102,31 @@ public class Const {
 			+ " ITEM_MAX || ', ' || READ_ONLY || ', ' || '''' || ITEM_VALUE || ''', ' || CAT_ID || ', ' || '''' || DICT_CODE || ''', ' || ORDER_NO || "
 			+ " '); END;~~' as mrg_query   FROM gen_config  WHERE company_code IN (SELECT '0' AS company_code FROM DUAL UNION ALL SELECT MIN (company_code) "
 			+ " company_code FROM gen_company WHERE company_code <> '0') AND sys_no = {system}";
+
+	public static final String SQL_MERGE_PROD_TYPE = "";
+	public static final String SQL_MERGE_BAL_TYPES = "";
+	public static final String SQL_MERGE_TXN_CODE = "";
+	public static final String SQL_MERGE_BAL_TYPE = "";
+	public static final String SQL_MERGE_INT = "";
+	public static final String SQL_MERGE_STMT_EXCLUSION = "";
+	public static final String SQL_MERGE_CLS = "";
+
+	public static final String SQL_MERGE_PL_OPER = "select 'MERGE INTO PL_OPER A USING (SELECT ' || '''' || OPER_CODE || ''' AS OPER_CODE, ' || '''' || NAME || "
+			+ "''' AS NAME, ' || '''' || NAME2 || ''' AS NAME2, ' || STATUS || ' AS STATUS, ' || SYS_NO || ' AS SYS_NO, ' || '''' || CAT_CODE || ''' AS "
+			+ "CAT_CODE ' || 'FROM DUAL) B ON (A.OPER_CODE = B.OPER_CODE) WHEN NOT MATCHED THEN INSERT (OPER_CODE, NAME, NAME2, STATUS, SYS_NO, CAT_CODE) "
+			+ "VALUES (B.OPER_CODE, B.NAME, B.NAME2, B.STATUS, B.SYS_NO, B.CAT_CODE)~~' mrg_query from PL_OPER where sys_no = {system}";
+	public static final String SQL_MERGE_NMW_OPER_COL = "SELECT 'MERGE INTO NMW_OPER_COL A USING (SELECT ' || '''' || OPER_CODE || ''' AS OPER_CODE, ' || '''' "
+			+ "|| COL_NAME || ''' AS COL_NAME, ' || '''' || NAME || ''' AS NAME, ' || '''' || NAME2 || ''' AS NAME2, ' || COL_TYPE || ' AS COL_TYPE, ' || 0 || ' "
+			+ "AS CHK_BL, ' || '''' || CHK_BL_TYPE || ''' AS CHK_BL_TYPE, ' || ORDER_NO || ' AS ORDER_NO, ' || CREATED_BY || ' AS CREATED_BY, ' || 'SYSDATE' || ' "
+			+ "AS CREATED_DATETIME, ' || MODIFIED_BY || ' AS MODIFIED_BY, ' || 'SYSDATE' || ' AS MODIFIED_DATETIME' || ' FROM DUAL) B ON (A.OPER_CODE = "
+			+ "B.OPER_CODE ' || 'and A.COL_NAME = B.COL_NAME) WHEN NOT MATCHED ' || 'THEN INSERT (OPER_CODE, COL_NAME, NAME, NAME2, ' || 'COL_TYPE, CHK_BL, "
+			+ "CHK_BL_TYPE, ORDER_NO, ' || 'CREATED_BY, CREATED_DATETIME, MODIFIED_BY, ' || 'MODIFIED_DATETIME) VALUES (B.OPER_CODE, B.COL_NAME, ' || 'B.NAME, "
+			+ "B.NAME2, B.COL_TYPE, B.CHK_BL, B.CHK_BL_TYPE, ' || 'B.ORDER_NO, B.CREATED_BY, B.CREATED_DATETIME, ' || 'B.MODIFIED_BY, B.MODIFIED_DATETIME)~~' "
+			+ "mrg_query FROM NMW_OPER_COL WHERE OPER_CODE LIKE '{system}%'";
+	public static final String SQL_MERGE_NMW_OPERATIONS = "select 'MERGE INTO NMW_OPERATIONS A USING (SELECT ' || '''' || OPER_CODE || ''' AS OPER_CODE, ' "
+			+ "|| '''' || SOURCE_TYPE || ''' AS SOURCE_TYPE, ' || '''' || SCR_CODE || ''' AS SCR_CODE, ' || '''' || MAIN_SCR_CODE || ''' AS MAIN_SCR_CODE ' "
+			+ "|| 'FROM DUAL) B ON (A.OPER_CODE = B.OPER_CODE) WHEN NOT MATCHED THEN INSERT (OPER_CODE, SOURCE_TYPE, SCR_CODE, MAIN_SCR_CODE) VALUES (B.OPER_CODE, "
+			+ "B.SOURCE_TYPE, B.SCR_CODE, B.MAIN_SCR_CODE)~~~' mrg_query from NMW_OPERATIONS where oper_code like '{system}%'";
 
 	private Const() {
 	}
