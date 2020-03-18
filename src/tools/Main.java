@@ -46,10 +46,10 @@ public class Main {
 	static String dbPassword = "gcm";
 	static String dbPort = "172.16.116.49:1521/nes";
 
-	static String CREATE_SCRIPT_PATH = "D:\\Tools\\tools\\Tools\\CREATE_METADATA_SCRIPTS\\";
-	static String FILE_OUTPUT_PATH = "C:\\Users\\badamsereedari.t\\Documents\\nes";
+	static String CREATE_SCRIPT_PATH = System.getProperty("user.dir") + "\\CREATE_METADATA_SCRIPTS\\";
+	static String FILE_OUTPUT_PATH = "C:\\nes";
 
-	static String[] systemList = { "SHR" };
+	static String[] systemList = { "LINE" };
 
 	public static void main(String[] args) throws Exception {
 		createFullDbChange();
@@ -76,7 +76,7 @@ public class Main {
 
 			module = s;
 
-			createFuncs(path);
+			createFuncs(path, true);
 		}
 		writeToFile(path + File.separator + "startup_text.txt", startUp);
 
@@ -84,53 +84,74 @@ public class Main {
 	}
 
 	public static void createFuncs(String path) {
-		// Table
-		createTableDbChange(path);
+		createFuncs(path, false);
+	}
 
-		// Config
-		createConfigDbChange(path);
+	// Table
+	public static void createFuncs(String path, boolean onlyTable) {
+		createTableAll(path);
 
-		// View
-		createViewDbChange(path);
+		if (!onlyTable) {
+			// View
+			createViewDbChange(path);
 
-		// System
-		createDataDbChange(path, DBchangeType.GEN_SYSTEM);
+			// System
+			createDataDbChange(path, DBchangeType.GEN_SYSTEM);
 
-		// Const
-		createDataDbChange(path, DBchangeType.CONST);
+			// Const
+			createDataDbChange(path, DBchangeType.CONST);
 
-		// Dictionary
-		createDataDbChange(path, DBchangeType.DICT);
+			// Dictionary
+			createDataDbChange(path, DBchangeType.DICT);
 
-		// Msg
-		createDataDbChange(path, DBchangeType.MSG);
+			// Msg
+			createDataDbChange(path, DBchangeType.MSG);
 
-		// Screen
-		createDataDbChange(path, DBchangeType.SCREEN);
+			// Screen
+			createDataDbChange(path, DBchangeType.SCREEN);
 
-		// Operation & Privilege
-		createDataDbChange(path, DBchangeType.OPER);
+			// Operation & Privilege
+			createDataDbChange(path, DBchangeType.OPER);
 
-		// Cache
-		createDataDbChange(path, DBchangeType.CACHE);
+			// Cache
+			createDataDbChange(path, DBchangeType.CACHE);
 
-		// Bulg
-		createDataDbChange(path, DBchangeType.BULG_TYPE);
+			// Bulg
+			createDataDbChange(path, DBchangeType.BULG_TYPE);
 
-		// PlOper
-		createPlOperDbChange(path);
+			// Config
+			createDBChanges(path, DataType.CONFIG);
 
-		// NmwOperation
-		createNmwOperationDbChange(path);
+			// PROD_TYPE
+			createDBChanges(path, DataType.PROD_TYPE);
 
-		// NmwOperCol
-		createNmwOperColDbChange(path);
+			// BAL_TYPE
+			createDBChanges(path, DataType.BAL_TYPE);
 
-		// ProdType
-		createProdTypeDbChange(path);
+			// BAL_TYPES
+			createDBChanges(path, DataType.BAL_TYPES);
 
-		// BalTypes
-		createBalTypesDbChange(path);
+			// TXN_CODE
+			createDBChanges(path, DataType.TXN_CODE);
+
+			// INT
+			createDBChanges(path, DataType.INT);
+
+			// STMT_EXCLUSION
+			createDBChanges(path, DataType.STMT_EXCLUSION);
+
+			// CLS
+			createDBChanges(path, DataType.CLS);
+
+			// PL_OPER
+			createDBChanges(path, DataType.PL_OPER);
+
+			// NMW_OPER_COL
+			createDBChanges(path, DataType.NMW_OPER_COL);
+
+			// NMW_OPERATIONS
+			createDBChanges(path, DataType.NMW_OPERATIONS);
+		}
 	}
 
 	// Table үүсгэх
@@ -232,6 +253,73 @@ public class Main {
 		}
 
 		print(module + " модулын view-ын файл үүсэгж дууслаа");
+		print("");
+	}
+
+	// View үүсгэх
+	public static void createDBChanges(String path, DataType type) {
+		String outPutText = "";
+		String sql = "";
+		String fileType = type.toString();
+
+		switch (type) {
+		case CONFIG:
+			sql = Const.SQL_MERGE_CONFIG;
+			break;
+		case PROD_TYPE:
+			sql = Const.SQL_MERGE_PROD_TYPE;
+			break;
+		case BAL_TYPE:
+			sql = Const.SQL_MERGE_BAL_TYPE;
+			break;
+		case BAL_TYPES:
+			sql = Const.SQL_MERGE_BAL_TYPES;
+			break;
+		case TXN_CODE:
+			sql = Const.SQL_MERGE_TXN_CODE;
+			break;
+		case INT:
+			sql = Const.SQL_MERGE_INT;
+			break;
+		case STMT_EXCLUSION:
+			sql = Const.SQL_MERGE_STMT_EXCLUSION;
+			break;
+		case CLS:
+			sql = Const.SQL_MERGE_CLS;
+			break;
+		case PL_OPER:
+			sql = Const.SQL_MERGE_PL_OPER;
+			break;
+		case NMW_OPER_COL:
+			sql = Const.SQL_MERGE_NMW_OPER_COL;
+			break;
+		case NMW_OPERATIONS:
+			sql = Const.SQL_MERGE_NMW_OPERATIONS;
+			break;
+		}
+		sql = sql.replace("{system}", ms.get(module));
+		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
+
+		if (lstRes != null && !lstRes.isEmpty()) {
+			for (HashMap<String, Object> l : lstRes) {
+				outPutText = outPutText + l.get("MRG_QUERY").toString() + "{newLine}";
+			}
+			outPutText = outPutText.replace("{newLine}", "\r\n");
+
+			if (outPutText != null && !outPutText.equals("")) {
+				String timeStamp = "80" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
+				String fileName = timeStamp + "_" + hm.get(module).toLowerCase() + "_" + fileType;
+
+				Func.checkAndCreateDir(path + File.separator + hm.get(module));
+				String filePath = path + File.separator + hm.get(module) + File.separator + fileName + ".sql";
+
+				writeToFile(filePath, outPutText);
+				String su = '"' + fileName + '"' + ",";
+				startUp = startUp + "\r\n" + su;
+			}
+
+		}
+		print(module + " модулын " + fileType + "-ын файл үүсэгж дууслаа");
 		print("");
 	}
 
@@ -415,6 +503,156 @@ public class Main {
 		print("");
 	}
 
+	// BalTypes үүсгэх
+	public static void createTxnCodeDbChange(String path) {
+		String outPutText = "";
+
+		String sql = Const.SQL_MERGE_TXN_CODE.replace("{system}", ms.get(module));
+		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
+
+		if (lstRes != null && !lstRes.isEmpty()) {
+			for (HashMap<String, Object> l : lstRes) {
+				outPutText = outPutText + l.get("MRG_QUERY").toString() + "{newLine}";
+			}
+			outPutText = outPutText.replace("{newLine}", "\r\n");
+
+			if (outPutText != null && !outPutText.equals("")) {
+				String timeStamp = "80" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
+				String fileName = timeStamp + "_" + hm.get(module).toLowerCase() + "_txn_code";
+
+				Func.checkAndCreateDir(path + File.separator + hm.get(module));
+				String filePath = path + File.separator + hm.get(module) + File.separator + fileName + ".sql";
+
+				writeToFile(filePath, outPutText);
+				String su = '"' + fileName + '"' + ",";
+				startUp = startUp + "\r\n" + su;
+			}
+
+		}
+		print(module + " модулын TxnCode-ын файл үүсэгж дууслаа");
+		print("");
+	}
+
+	// BalType үүсгэх
+	public static void createBalTypeDbChange(String path) {
+		String outPutText = "";
+
+		String sql = Const.SQL_MERGE_BAL_TYPE.replace("{system}", ms.get(module));
+		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
+
+		if (lstRes != null && !lstRes.isEmpty()) {
+			for (HashMap<String, Object> l : lstRes) {
+				outPutText = outPutText + l.get("MRG_QUERY").toString() + "{newLine}";
+			}
+			outPutText = outPutText.replace("{newLine}", "\r\n");
+
+			if (outPutText != null && !outPutText.equals("")) {
+				String timeStamp = "80" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
+				String fileName = timeStamp + "_" + hm.get(module).toLowerCase() + "_bal_type";
+
+				Func.checkAndCreateDir(path + File.separator + hm.get(module));
+				String filePath = path + File.separator + hm.get(module) + File.separator + fileName + ".sql";
+
+				writeToFile(filePath, outPutText);
+				String su = '"' + fileName + '"' + ",";
+				startUp = startUp + "\r\n" + su;
+			}
+
+		}
+		print(module + " модулын BalTypes-ын файл үүсэгж дууслаа");
+		print("");
+	}
+
+	// BalTypes үүсгэх
+	public static void createIntDbChange(String path) {
+		String outPutText = "";
+
+		String sql = Const.SQL_MERGE_INT.replace("{system}", ms.get(module));
+		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
+
+		if (lstRes != null && !lstRes.isEmpty()) {
+			for (HashMap<String, Object> l : lstRes) {
+				outPutText = outPutText + l.get("MRG_QUERY").toString() + "{newLine}";
+			}
+			outPutText = outPutText.replace("{newLine}", "\r\n");
+
+			if (outPutText != null && !outPutText.equals("")) {
+				String timeStamp = "80" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
+				String fileName = timeStamp + "_" + hm.get(module).toLowerCase() + "_int";
+
+				Func.checkAndCreateDir(path + File.separator + hm.get(module));
+				String filePath = path + File.separator + hm.get(module) + File.separator + fileName + ".sql";
+
+				writeToFile(filePath, outPutText);
+				String su = '"' + fileName + '"' + ",";
+				startUp = startUp + "\r\n" + su;
+			}
+
+		}
+		print(module + " модулын int-ын файл үүсэгж дууслаа");
+		print("");
+	}
+
+	// StmtExclusion үүсгэх
+	public static void createStmtExclusionDbChange(String path) {
+		String outPutText = "";
+
+		String sql = Const.SQL_MERGE_STMT_EXCLUSION.replace("{system}", ms.get(module));
+		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
+
+		if (lstRes != null && !lstRes.isEmpty()) {
+			for (HashMap<String, Object> l : lstRes) {
+				outPutText = outPutText + l.get("MRG_QUERY").toString() + "{newLine}";
+			}
+			outPutText = outPutText.replace("{newLine}", "\r\n");
+
+			if (outPutText != null && !outPutText.equals("")) {
+				String timeStamp = "80" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
+				String fileName = timeStamp + "_" + hm.get(module).toLowerCase() + "_stmt_exclusion";
+
+				Func.checkAndCreateDir(path + File.separator + hm.get(module));
+				String filePath = path + File.separator + hm.get(module) + File.separator + fileName + ".sql";
+
+				writeToFile(filePath, outPutText);
+				String su = '"' + fileName + '"' + ",";
+				startUp = startUp + "\r\n" + su;
+			}
+
+		}
+		print(module + " модулын StmtExclusion-ын файл үүсэгж дууслаа");
+		print("");
+	}
+
+	// Cls үүсгэх
+	public static void createClsDbChange(String path) {
+		String outPutText = "";
+
+		String sql = Const.SQL_MERGE_CLS.replace("{system}", ms.get(module));
+		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
+
+		if (lstRes != null && !lstRes.isEmpty()) {
+			for (HashMap<String, Object> l : lstRes) {
+				outPutText = outPutText + l.get("MRG_QUERY").toString() + "{newLine}";
+			}
+			outPutText = outPutText.replace("{newLine}", "\r\n");
+
+			if (outPutText != null && !outPutText.equals("")) {
+				String timeStamp = "80" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
+				String fileName = timeStamp + "_" + hm.get(module).toLowerCase() + "_class";
+
+				Func.checkAndCreateDir(path + File.separator + hm.get(module));
+				String filePath = path + File.separator + hm.get(module) + File.separator + fileName + ".sql";
+
+				writeToFile(filePath, outPutText);
+				String su = '"' + fileName + '"' + ",";
+				startUp = startUp + "\r\n" + su;
+			}
+
+		}
+		print(module + " модулын Cls-ын файл үүсэгж дууслаа");
+		print("");
+	}
+
 	private static void createDataDbChange(String path, DBchangeType type) {
 		String typeName = "";
 		String outPutText = "";
@@ -534,7 +772,7 @@ public class Main {
 		return sql;
 	}
 
-	private static String executeQuery(String sql, DBchangeType type) {
+	public static String executeQuery(String sql, DBchangeType type) {
 		String outPutText = "";
 		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
 
@@ -972,7 +1210,7 @@ public class Main {
 
 	// Нэг мөрөнд оруулах
 	public static void oneline() {
-		String filePath = "D:\\nes-server\\asr.b\\db\\20200206120100_asr.b_add_pl_oper.sql";
+		String filePath = "D:\\nes-server\\bac.b\\db\\80200316103145_bac.b_txn_code.sql";
 		oneline(filePath);
 	}
 
@@ -1262,7 +1500,7 @@ public class Main {
 		file.delete();
 	}
 
-	private static void print(String msg) {
+	public static void print(String msg) {
 		System.out.println(msg);
 	}
 
@@ -1472,12 +1710,133 @@ public class Main {
 		ms.put("ASR", "1212");
 	}
 
-	private static List<HashMap<String, Object>> ExecuteQuery(String sql) {
+	public static List<HashMap<String, Object>> ExecuteQuery(String sql) {
 		return ExecuteQuery(sql, false);
 	}
 
-	private static List<HashMap<String, Object>> ExecuteQuery(String sql, boolean isIndex) {
+	public static List<HashMap<String, Object>> ExecuteQuery(String sql, boolean isIndex) {
 		HashMap<String, Object> tmpGeneratedParam = null;
 		return ExternalDB.exeSQL(sql, tmpGeneratedParam, dbPort, dbName, dbPassword, isIndex);
+	}
+
+	static List<String> tables = new ArrayList<>();
+	static List<String> columns = new ArrayList<>();
+	static List<String> foreignKeys = new ArrayList<>();
+	static List<String> indexes = new ArrayList<>();
+
+	// Table үүсгэх
+	public static void createTableAll(String path) {
+		String text = "";
+		print(module + " модулын байзын файл үүсэгж эхлэв.");
+		String filePath = path + File.separator + hm.get(module);
+		Func.checkAndCreateDir(filePath);
+		filePath = filePath + File.separator + "src_" + hm.get(module).toLowerCase();
+
+		prepTableFiles(CREATE_SCRIPT_PATH + "1_CreateTable_NEW.sql", module, filePath, 1);
+		prepTableFiles(CREATE_SCRIPT_PATH + "2_AddColumn.sql", module, filePath, 2);
+		prepTableFiles(CREATE_SCRIPT_PATH + "3_ForeignKey_NEW.sql", module, filePath, 3);
+		prepTableFiles(CREATE_SCRIPT_PATH + "4_Index_NEW.sql", module, filePath, 4);
+
+		List<String> tableNames = getTableNames(module);
+
+		for (String name : tableNames) {
+			text = "";
+			String chkTable = "CHK_TBL('" + name + "')";
+			String chkColumn = "CHK_COL('" + name + "'";
+			String chkForeignKey = "ALTER TABLE " + name + " ADD CONSTRAINT";
+			String chkIndex = "ON " + name + " (";
+			for (String t : tables) {
+				if (t.contains(chkTable)) {
+					text = text + t + "{newLine}";
+					text = text + "{newLine}";
+					tables.remove(t);
+					break;
+				}
+			}
+			for (String c : columns) {
+				if (c.contains(chkColumn)) {
+					text = text + c + "{newLine}";
+				}
+			}
+			for (String i : indexes) {
+				if (i.contains(chkIndex)) {
+					text = text + i + "{newLine}";
+				}
+			}
+			for (String f : foreignKeys) {
+				if (f.contains(chkForeignKey)) {
+					text = text + f + "{newLine}";
+				}
+			}
+
+			String fileName = "src_" + hm.get(module).toLowerCase() + "_tbl_" + name.toLowerCase();
+			String timeStamp = fileName + "$20" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
+
+			text = "--" + timeStamp + "{newLine}" + text;
+			text = text.replace("{newLine}", "\r\n");
+
+			Func.checkAndCreateDir(path + File.separator + hm.get(module));
+			String outPut = path + File.separator + hm.get(module) + File.separator + fileName + ".sql";
+
+			writeToFile(outPut, text);
+			String su = '"' + timeStamp + '"' + ",";
+			startUp = startUp + "\r\n" + su;
+
+			print(name + " table file created!");
+		}
+	}
+
+	public static void prepTableFiles(String filePath, String moduleName, String path, int dbType) {
+		String sql = "";
+		String textFile = "";
+		boolean isIndex = false;
+
+		List<String> line = readFileInList(filePath);
+
+		Iterator<String> itr = line.iterator();
+		while (itr.hasNext()) {
+			sql = sql + itr.next() + " ";
+		}
+		sql = sql.replace("&&tableprefix", moduleName);
+
+		if (dbType == 4) {
+			isIndex = true;
+		}
+
+		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql, isIndex);
+
+		for (HashMap<String, Object> l : lstRes) {
+			textFile = l.get("CREATESCRIPT").toString();
+			switch (dbType) {
+			case 1:
+				tables.add(textFile);
+				break;
+			case 2:
+				columns.add(textFile);
+				break;
+			case 3:
+				foreignKeys.add(textFile);
+				break;
+			case 4:
+				indexes.add(textFile);
+				break;
+			}
+		}
+	}
+
+	private static List<String> getTableNames(String moduleName) {
+		List<String> tableNames = new ArrayList<>();
+		String textFile = "";
+		String sql = "SELECT TABLE_NAME FROM ALL_TABLES WHERE OWNER = '" + dbName + "' AND TABLE_NAME LIKE '"
+				+ moduleName + "%'";
+
+		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql, false);
+
+		for (HashMap<String, Object> l : lstRes) {
+			textFile = l.get("TABLE_NAME").toString();
+			tableNames.add(textFile);
+		}
+
+		return tableNames;
 	}
 }
