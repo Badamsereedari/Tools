@@ -49,11 +49,11 @@ public class Main {
 	static String CREATE_SCRIPT_PATH = System.getProperty("user.dir") + "\\CREATE_METADATA_SCRIPTS\\";
 	static String FILE_OUTPUT_PATH = "C:\\nes";
 
-	static String[] systemList = { "ASR" };
+	static String[] systemList = { "CIF" };
 
 	public static void main(String[] args) throws Exception {
-//		createFullDbChange();
-		oneline();
+		createFullDbChange();
+//		oneline();
 //		chgExistingDbChange();
 	}
 
@@ -351,7 +351,7 @@ public class Main {
 
 		for (HashMap<String, Object> l : lstRes) {
 			String viewName = l.get("VIEW_NAME").toString();
-			String viewQuery = l.get("TEXT_VC").toString();
+			String viewQuery = l.get("TEXT").toString();
 			viewQuery = viewQuery.replace("\n", "\r\n");
 			String fileName = "src_" + hm.get(module).toLowerCase() + "_" + viewName.toLowerCase();
 			String timeStamp = fileName + "$50" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
@@ -1033,7 +1033,7 @@ public class Main {
 
 	// Нэг мөрөнд оруулах
 	private static void oneline() {
-		String filePath = "D:\\nes-server\\cif.b\\db\\20200318100800_cif.b_nmw_add_oper.sql";
+		String filePath = "D:\\nes-server\\asr.b\\db\\80200324195130_asr.b_add_ntf_data.sql";
 		oneline(filePath);
 	}
 
@@ -1512,7 +1512,7 @@ public class Main {
 		ms.put("GEN", "1010");
 		ms.put("EOD", "1062");
 		ms.put("IRC", "1014");
-		ms.put("CIF", "1015");
+		ms.put("CIF", "1020");
 		ms.put("PL", "1392");
 		ms.put("CCY", "1013");
 		ms.put("PB", "1362");
