@@ -42,20 +42,22 @@ public class Main {
 	static String startUp = "";
 	static String module = "";
 
-	static String dbName = "NES_2043";
+	static String dbName = "NES_2013";
 	static String dbPassword = "gcm";
 	static String dbPort = "172.16.116.49:1521/nes";
 
 	static String CREATE_SCRIPT_PATH = System.getProperty("user.dir") + "\\CREATE_METADATA_SCRIPTS\\";
 	static String FILE_OUTPUT_PATH = "C:\\nes";
 
-	static String[] systemList = { "LINE" };
+	static String[] systemList = { "ASR" };
 
 	public static void main(String[] args) throws Exception {
-		createFullDbChange();
+//		createFullDbChange();
+		oneline();
+//		chgExistingDbChange();
 	}
 
-	public static void createFullDbChange() {
+	private static void createFullDbChange() {
 		String path = FILE_OUTPUT_PATH;
 
 		putModules();
@@ -76,7 +78,7 @@ public class Main {
 
 			module = s;
 
-			createFuncs(path, true);
+			createFuncs(path, false);
 		}
 		writeToFile(path + File.separator + "startup_text.txt", startUp);
 
@@ -88,13 +90,13 @@ public class Main {
 	}
 
 	// Table
-	public static void createFuncs(String path, boolean onlyTable) {
+	private static void createFuncs(String path, boolean onlyTable) {
 		createTableAll(path);
 
 		if (!onlyTable) {
 			// View
 			createViewDbChange(path);
-
+			
 			// System
 			createDataDbChange(path, DBchangeType.GEN_SYSTEM);
 
@@ -151,33 +153,163 @@ public class Main {
 
 			// NMW_OPERATIONS
 			createDBChanges(path, DataType.NMW_OPERATIONS);
+
+			// GLIP_GL_CFG
+			createDBChanges(path, DataType.GL_CFG);
+
+			// GLIP_CONT_ENTRY_CFG
+			createDBChanges(path, DataType.GL_CONT_CFG);
+
+			// GLIP_TXN_CONFIG
+			createDBChanges(path, DataType.GL_TXN_CFG);
+
+			// TLLR_OPER
+			createDataDbChange(path, DBchangeType.TLLR_OPER);
+
+			// LM_OPER
+			createDBChanges(path, DataType.LM_OPER);
+
+			// PROC_OPER
+			createDataDbChange(path, DBchangeType.PROC_OPER);
 		}
 	}
 
 	// Table үүсгэх
-	public static void createTableDbChange(String path) {
+	private static void createTableAll(String path) {
+		List<String> tables = new ArrayList<>();
+		List<String> columns = new ArrayList<>();
+		List<String> foreignKeys = new ArrayList<>();
+		List<String> indexes = new ArrayList<>();
+
+		String text = "";
 		print(module + " модулын байзын файл үүсэгж эхлэв.");
 		String filePath = path + File.separator + hm.get(module);
 		Func.checkAndCreateDir(filePath);
 		filePath = filePath + File.separator + "src_" + hm.get(module).toLowerCase();
 
-		executeFromFile(CREATE_SCRIPT_PATH + "1_CreateTable.sql", module, filePath, 1);
-		print(module + " модулын tables үүсгэв.");
-		executeFromFile(CREATE_SCRIPT_PATH + "2_AddColumn.sql", module, filePath, 2);
-		print(module + " модулын columns үүсгэв.");
-		executeFromFile(CREATE_SCRIPT_PATH + "3_ForeignKey.sql", module, filePath, 3);
-		print(module + " модулын foreign key үүсгэв.");
-		executeFromFile(CREATE_SCRIPT_PATH + "4_Index.sql", module, filePath, 4);
-		print(module + " модулын indexe үүсгэв.");
+		tables = prepTableFiles(CREATE_SCRIPT_PATH + "1_CreateTable_NEW.sql", module, false);
+		columns = prepTableFiles(CREATE_SCRIPT_PATH + "2_AddColumn.sql", module, false);
+		foreignKeys = prepTableFiles(CREATE_SCRIPT_PATH + "3_ForeignKey_NEW.sql", module, false);
+		indexes = prepTableFiles(CREATE_SCRIPT_PATH + "4_Index_NEW.sql", module, true);
 
-		startUp = startUp + "\r\n";
-		print("");
+		List<String> tableNames = getTableNames(module);
+		HashMap<String, Long> tableTier = getTableTier(tableNames, foreignKeys);
+
+		for (String name : tableNames) {
+			text = "";
+			String chkTable = "CHK_TBL('" + name + "')";
+			String chkColumn = "CHK_COL('" + name + "'";
+			String chkForeignKey = "ALTER TABLE " + name + " ADD CONSTRAINT";
+			String chkIndex = "ON " + name + " (";
+			for (String t : tables) {
+				if (t.contains(chkTable)) {
+					text = text + t + "{newLine}";
+					text = text + "{newLine}";
+					tables.remove(t);
+					break;
+				}
+			}
+			for (String c : columns) {
+				if (c.contains(chkColumn)) {
+					text = text + c + "{newLine}";
+				}
+			}
+			for (String i : indexes) {
+				if (i.contains(chkIndex)) {
+					text = text + i + "{newLine}";
+				}
+			}
+			for (String f : foreignKeys) {
+				if (f.contains(chkForeignKey)) {
+					text = text + f + "{newLine}";
+				}
+			}
+
+			String fileName = "src_" + hm.get(module).toLowerCase() + "_tbl_" + name.toLowerCase();
+			Long tier = tableTier.get(name);
+			String timeStamp = fileName + "$2" + tier + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
+
+			text = "--" + timeStamp + "{newLine}" + text;
+			text = text.replace("{newLine}", "\r\n");
+
+			String writePath = path + File.separator + hm.get(module).toLowerCase();
+			Func.checkAndCreateDir(writePath);
+			Func.checkAndCreateDir(writePath + File.separator + "db");
+			String outPut = writePath + File.separator + "db" + File.separator + fileName + ".sql";
+
+			writeToFile(outPut, text);
+			String su = '"' + timeStamp + '"' + ",";
+			startUp = startUp + "\r\n" + su;
+
+			print(name + " table file created!");
+		}
 	}
 
-	public static void executeFromFile(String filePath, String moduleName, String path, int dbType) {
+	private static HashMap<String, Long> getTableTier(List<String> tables, List<String> foreignKeys) {
+		HashMap<String, Long> tableTier = new HashMap<>();
+		HashMap<String, List<String>> tableKeys = new HashMap<>();
+		List<String> sortTables = new ArrayList<>();
+		List<String> tmpList = new ArrayList<>();
+		String chkForeignKey;
+		for (String t : tables) {
+			chkForeignKey = "ALTER TABLE " + t + " ADD CONSTRAINT";
+			boolean isExist = false;
+			tmpList = new ArrayList<>();
+			for (String f : foreignKeys) {
+				if (f.contains(chkForeignKey)) {
+					String parentTable = getStrWithRegex(f, "REFERENCES ", " (");
+					if (parentTable != null && !parentTable.equals("")) {
+						if (parentTable.startsWith(module) && !parentTable.equals(t)) {
+							isExist = true;
+							tmpList.add(parentTable);
+						}
+					}
+				}
+			}
+
+			if (isExist) {
+				sortTables.add(t);
+				tableTier.put(t, 1L);
+				tableKeys.put(t, tmpList);
+			} else {
+				tableTier.put(t, 0L);
+			}
+		}
+
+		boolean sorting = false;
+		if (sortTables != null && !sortTables.isEmpty()) {
+			sorting = true;
+		}
+		while (sorting) {
+			List<String> tmpSort = new ArrayList<String>();
+			for (String name : sortTables) {
+				Long tier = tableTier.get(name);
+				tmpList = tableKeys.get(name);
+				for (String f : tmpList) {
+					Long parentTier = tableTier.get(f);
+					if (tier <= parentTier) {
+						tableTier.put(name, tier + 1);
+						tmpSort.add(name);
+						break;
+					}
+				}
+
+			}
+
+			if (tmpSort != null && !tmpSort.isEmpty()) {
+				sortTables = tmpSort;
+			} else {
+				sorting = false;
+			}
+		}
+
+		return tableTier;
+
+	}
+
+	private static List<String> prepTableFiles(String filePath, String moduleName, boolean isIndex) {
 		String sql = "";
-		String textFile = "";
-		boolean isIndex = false;
+		List<String> data = new ArrayList<>();
 
 		List<String> line = readFileInList(filePath);
 
@@ -187,50 +319,33 @@ public class Main {
 		}
 		sql = sql.replace("&&tableprefix", moduleName);
 
-		String timestamp = "src_" + hm.get(moduleName).toLowerCase();
-
-		switch (dbType) {
-		case 1:
-			timestamp = timestamp + "_tables";
-			path = path + "_tables.sql";
-			break;
-		case 2:
-			timestamp = timestamp + "_columns";
-			path = path + "_columns.sql";
-			break;
-		case 3:
-			timestamp = timestamp + "_foreignkeys";
-			path = path + "_foreignkeys.sql";
-			break;
-		case 4:
-			timestamp = timestamp + "_indexes";
-			path = path + "_indexes.sql";
-			isIndex = true;
-			break;
-		}
-
 		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql, isIndex);
 
 		for (HashMap<String, Object> l : lstRes) {
-			textFile = textFile + l.get("CREATESCRIPT").toString() + "{newLine}";
-		}
-		textFile = textFile.replace("{newLine}", "\r\n");
-
-		timestamp = timestamp + "$20" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
-		String su = '"' + timestamp + '"' + ",";
-		timestamp = "--" + timestamp;
-
-		textFile = timestamp + "\r\n" + textFile;
-
-		if (textFile != null && !textFile.equals("")) {
-			writeToFile(path, textFile);
+			data.add(l.get("CREATESCRIPT").toString());
 		}
 
-		startUp = startUp + "\r\n" + su;
+		return data;
+	}
+
+	private static List<String> getTableNames(String moduleName) {
+		List<String> tableNames = new ArrayList<>();
+		String textFile = "";
+		String sql = "SELECT TABLE_NAME FROM ALL_TABLES WHERE OWNER = '" + dbName + "' AND TABLE_NAME LIKE '"
+				+ moduleName + "%'";
+
+		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql, false);
+
+		for (HashMap<String, Object> l : lstRes) {
+			textFile = l.get("TABLE_NAME").toString();
+			tableNames.add(textFile);
+		}
+
+		return tableNames;
 	}
 
 	// View үүсгэх
-	public static void createViewDbChange(String path) {
+	private static void createViewDbChange(String path) {
 		String sql = Const.SQL_VIEW.replace("{module}", module).replace("{dbName}", dbName);
 		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
 
@@ -244,8 +359,10 @@ public class Main {
 			viewQuery = "--" + timeStamp + "\r\n" + "CREATE OR REPLACE VIEW " + viewName + "\r\n" + "AS\r\n"
 					+ viewQuery;
 
-			Func.checkAndCreateDir(path + File.separator + hm.get(module));
-			String filePath = path + File.separator + hm.get(module) + File.separator + fileName + ".sql";
+			String writePath = path + File.separator + hm.get(module).toLowerCase();
+			Func.checkAndCreateDir(writePath);
+			Func.checkAndCreateDir(writePath + File.separator + "db");
+			String filePath = writePath + File.separator + "db" + File.separator + fileName + ".sql";
 
 			writeToFile(filePath, viewQuery);
 			String su = '"' + timeStamp + '"' + ",";
@@ -257,7 +374,7 @@ public class Main {
 	}
 
 	// View үүсгэх
-	public static void createDBChanges(String path, DataType type) {
+	private static void createDBChanges(String path, DataType type) {
 		String outPutText = "";
 		String sql = "";
 		String fileType = type.toString();
@@ -296,8 +413,20 @@ public class Main {
 		case NMW_OPERATIONS:
 			sql = Const.SQL_MERGE_NMW_OPERATIONS;
 			break;
+		case GL_CFG:
+			sql = Const.SQL_MERGE_GL_CFG;
+			break;
+		case GL_CONT_CFG:
+			sql = Const.SQL_MERGE_GL_CONT_CFG;
+			break;
+		case GL_TXN_CFG:
+			sql = Const.SQL_MERGE_GL_TXN_CFG;
+			break;
+		case LM_OPER:
+			sql = Const.SQL_MERGE_LM_OPER;
+			break;
 		}
-		sql = sql.replace("{system}", ms.get(module));
+		sql = sql.replace("{system}", ms.get(module)).replace("{module}", module);
 		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
 
 		if (lstRes != null && !lstRes.isEmpty()) {
@@ -310,8 +439,10 @@ public class Main {
 				String timeStamp = "80" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
 				String fileName = timeStamp + "_" + hm.get(module).toLowerCase() + "_" + fileType;
 
-				Func.checkAndCreateDir(path + File.separator + hm.get(module));
-				String filePath = path + File.separator + hm.get(module) + File.separator + fileName + ".sql";
+				String writePath = path + File.separator + hm.get(module).toLowerCase();
+				Func.checkAndCreateDir(writePath);
+				Func.checkAndCreateDir(writePath + File.separator + "db");
+				String filePath = writePath + File.separator + "db" + File.separator + fileName + ".sql";
 
 				writeToFile(filePath, outPutText);
 				String su = '"' + fileName + '"' + ",";
@@ -320,336 +451,6 @@ public class Main {
 
 		}
 		print(module + " модулын " + fileType + "-ын файл үүсэгж дууслаа");
-		print("");
-	}
-
-	// View үүсгэх
-	public static void createConfigDbChange(String path) {
-		String outPutText = "";
-
-		String sql = Const.SQL_MERGE_CONFIG.replace("{system}", ms.get(module));
-		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
-
-		if (lstRes != null && !lstRes.isEmpty()) {
-			for (HashMap<String, Object> l : lstRes) {
-				outPutText = outPutText + l.get("MRG_QUERY").toString() + "{newLine}";
-			}
-			outPutText = outPutText.replace("{newLine}", "\r\n");
-
-			if (outPutText != null && !outPutText.equals("")) {
-				String timeStamp = "80" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
-				String fileName = timeStamp + "_" + hm.get(module).toLowerCase() + "_config";
-
-				Func.checkAndCreateDir(path + File.separator + hm.get(module));
-				String filePath = path + File.separator + hm.get(module) + File.separator + fileName + ".sql";
-
-				writeToFile(filePath, outPutText);
-				String su = '"' + fileName + '"' + ",";
-				startUp = startUp + "\r\n" + su;
-			}
-
-		}
-		print(module + " модулын config-ын файл үүсэгж дууслаа");
-		print("");
-	}
-
-	// PlOper үүсгэх
-	public static void createPlOperDbChange(String path) {
-		String outPutText = "";
-
-		String sql = Const.SQL_MERGE_PL_OPER.replace("{system}", ms.get(module));
-		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
-
-		if (lstRes != null && !lstRes.isEmpty()) {
-			for (HashMap<String, Object> l : lstRes) {
-				outPutText = outPutText + l.get("MRG_QUERY").toString() + "{newLine}";
-			}
-			outPutText = outPutText.replace("{newLine}", "\r\n");
-
-			if (outPutText != null && !outPutText.equals("")) {
-				String timeStamp = "80" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
-				String fileName = timeStamp + "_" + hm.get(module).toLowerCase() + "_pl_oper";
-
-				Func.checkAndCreateDir(path + File.separator + hm.get(module));
-				String filePath = path + File.separator + hm.get(module) + File.separator + fileName + ".sql";
-
-				writeToFile(filePath, outPutText);
-				String su = '"' + fileName + '"' + ",";
-				startUp = startUp + "\r\n" + su;
-			}
-
-		}
-		print(module + " модулын PlOper-ын файл үүсэгж дууслаа");
-		print("");
-	}
-
-	// NmwOperCol үүсгэх
-	public static void createNmwOperColDbChange(String path) {
-		String outPutText = "";
-
-		String sql = Const.SQL_MERGE_NMW_OPER_COL.replace("{system}", ms.get(module));
-		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
-
-		if (lstRes != null && !lstRes.isEmpty()) {
-			for (HashMap<String, Object> l : lstRes) {
-				outPutText = outPutText + l.get("MRG_QUERY").toString() + "{newLine}";
-			}
-			outPutText = outPutText.replace("{newLine}", "\r\n");
-
-			if (outPutText != null && !outPutText.equals("")) {
-				String timeStamp = "80" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
-				String fileName = timeStamp + "_" + hm.get(module).toLowerCase() + "_nmw_oper_col";
-
-				Func.checkAndCreateDir(path + File.separator + hm.get(module));
-				String filePath = path + File.separator + hm.get(module) + File.separator + fileName + ".sql";
-
-				writeToFile(filePath, outPutText);
-				String su = '"' + fileName + '"' + ",";
-				startUp = startUp + "\r\n" + su;
-			}
-
-		}
-		print(module + " модулын NmwOperCol-ын файл үүсэгж дууслаа");
-		print("");
-	}
-
-	// NmwOperation үүсгэх
-	public static void createNmwOperationDbChange(String path) {
-		String outPutText = "";
-
-		String sql = Const.SQL_MERGE_NMW_OPERATIONS.replace("{system}", ms.get(module));
-		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
-
-		if (lstRes != null && !lstRes.isEmpty()) {
-			for (HashMap<String, Object> l : lstRes) {
-				outPutText = outPutText + l.get("MRG_QUERY").toString() + "{newLine}";
-			}
-			outPutText = outPutText.replace("{newLine}", "\r\n");
-
-			if (outPutText != null && !outPutText.equals("")) {
-				String timeStamp = "80" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
-				String fileName = timeStamp + "_" + hm.get(module).toLowerCase() + "_nmw_operation";
-
-				Func.checkAndCreateDir(path + File.separator + hm.get(module));
-				String filePath = path + File.separator + hm.get(module) + File.separator + fileName + ".sql";
-
-				writeToFile(filePath, outPutText);
-				String su = '"' + fileName + '"' + ",";
-				startUp = startUp + "\r\n" + su;
-			}
-
-		}
-		print(module + " модулын NmwOperation-ын файл үүсэгж дууслаа");
-		print("");
-	}
-
-	// ProdType үүсгэх
-	public static void createProdTypeDbChange(String path) {
-		String outPutText = "";
-
-		String sql = Const.SQL_MERGE_PROD_TYPE.replace("{system}", ms.get(module));
-		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
-
-		if (lstRes != null && !lstRes.isEmpty()) {
-			for (HashMap<String, Object> l : lstRes) {
-				outPutText = outPutText + l.get("MRG_QUERY").toString() + "{newLine}";
-			}
-			outPutText = outPutText.replace("{newLine}", "\r\n");
-
-			if (outPutText != null && !outPutText.equals("")) {
-				String timeStamp = "80" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
-				String fileName = timeStamp + "_" + hm.get(module).toLowerCase() + "_prod_type";
-
-				Func.checkAndCreateDir(path + File.separator + hm.get(module));
-				String filePath = path + File.separator + hm.get(module) + File.separator + fileName + ".sql";
-
-				writeToFile(filePath, outPutText);
-				String su = '"' + fileName + '"' + ",";
-				startUp = startUp + "\r\n" + su;
-			}
-
-		}
-		print(module + " модулын ProdType-ын файл үүсэгж дууслаа");
-		print("");
-	}
-
-	// BalTypes үүсгэх
-	public static void createBalTypesDbChange(String path) {
-		String outPutText = "";
-
-		String sql = Const.SQL_MERGE_BAL_TYPES.replace("{system}", ms.get(module));
-		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
-
-		if (lstRes != null && !lstRes.isEmpty()) {
-			for (HashMap<String, Object> l : lstRes) {
-				outPutText = outPutText + l.get("MRG_QUERY").toString() + "{newLine}";
-			}
-			outPutText = outPutText.replace("{newLine}", "\r\n");
-
-			if (outPutText != null && !outPutText.equals("")) {
-				String timeStamp = "80" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
-				String fileName = timeStamp + "_" + hm.get(module).toLowerCase() + "_bal_types";
-
-				Func.checkAndCreateDir(path + File.separator + hm.get(module));
-				String filePath = path + File.separator + hm.get(module) + File.separator + fileName + ".sql";
-
-				writeToFile(filePath, outPutText);
-				String su = '"' + fileName + '"' + ",";
-				startUp = startUp + "\r\n" + su;
-			}
-
-		}
-		print(module + " модулын BalTypes-ын файл үүсэгж дууслаа");
-		print("");
-	}
-
-	// BalTypes үүсгэх
-	public static void createTxnCodeDbChange(String path) {
-		String outPutText = "";
-
-		String sql = Const.SQL_MERGE_TXN_CODE.replace("{system}", ms.get(module));
-		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
-
-		if (lstRes != null && !lstRes.isEmpty()) {
-			for (HashMap<String, Object> l : lstRes) {
-				outPutText = outPutText + l.get("MRG_QUERY").toString() + "{newLine}";
-			}
-			outPutText = outPutText.replace("{newLine}", "\r\n");
-
-			if (outPutText != null && !outPutText.equals("")) {
-				String timeStamp = "80" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
-				String fileName = timeStamp + "_" + hm.get(module).toLowerCase() + "_txn_code";
-
-				Func.checkAndCreateDir(path + File.separator + hm.get(module));
-				String filePath = path + File.separator + hm.get(module) + File.separator + fileName + ".sql";
-
-				writeToFile(filePath, outPutText);
-				String su = '"' + fileName + '"' + ",";
-				startUp = startUp + "\r\n" + su;
-			}
-
-		}
-		print(module + " модулын TxnCode-ын файл үүсэгж дууслаа");
-		print("");
-	}
-
-	// BalType үүсгэх
-	public static void createBalTypeDbChange(String path) {
-		String outPutText = "";
-
-		String sql = Const.SQL_MERGE_BAL_TYPE.replace("{system}", ms.get(module));
-		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
-
-		if (lstRes != null && !lstRes.isEmpty()) {
-			for (HashMap<String, Object> l : lstRes) {
-				outPutText = outPutText + l.get("MRG_QUERY").toString() + "{newLine}";
-			}
-			outPutText = outPutText.replace("{newLine}", "\r\n");
-
-			if (outPutText != null && !outPutText.equals("")) {
-				String timeStamp = "80" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
-				String fileName = timeStamp + "_" + hm.get(module).toLowerCase() + "_bal_type";
-
-				Func.checkAndCreateDir(path + File.separator + hm.get(module));
-				String filePath = path + File.separator + hm.get(module) + File.separator + fileName + ".sql";
-
-				writeToFile(filePath, outPutText);
-				String su = '"' + fileName + '"' + ",";
-				startUp = startUp + "\r\n" + su;
-			}
-
-		}
-		print(module + " модулын BalTypes-ын файл үүсэгж дууслаа");
-		print("");
-	}
-
-	// BalTypes үүсгэх
-	public static void createIntDbChange(String path) {
-		String outPutText = "";
-
-		String sql = Const.SQL_MERGE_INT.replace("{system}", ms.get(module));
-		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
-
-		if (lstRes != null && !lstRes.isEmpty()) {
-			for (HashMap<String, Object> l : lstRes) {
-				outPutText = outPutText + l.get("MRG_QUERY").toString() + "{newLine}";
-			}
-			outPutText = outPutText.replace("{newLine}", "\r\n");
-
-			if (outPutText != null && !outPutText.equals("")) {
-				String timeStamp = "80" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
-				String fileName = timeStamp + "_" + hm.get(module).toLowerCase() + "_int";
-
-				Func.checkAndCreateDir(path + File.separator + hm.get(module));
-				String filePath = path + File.separator + hm.get(module) + File.separator + fileName + ".sql";
-
-				writeToFile(filePath, outPutText);
-				String su = '"' + fileName + '"' + ",";
-				startUp = startUp + "\r\n" + su;
-			}
-
-		}
-		print(module + " модулын int-ын файл үүсэгж дууслаа");
-		print("");
-	}
-
-	// StmtExclusion үүсгэх
-	public static void createStmtExclusionDbChange(String path) {
-		String outPutText = "";
-
-		String sql = Const.SQL_MERGE_STMT_EXCLUSION.replace("{system}", ms.get(module));
-		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
-
-		if (lstRes != null && !lstRes.isEmpty()) {
-			for (HashMap<String, Object> l : lstRes) {
-				outPutText = outPutText + l.get("MRG_QUERY").toString() + "{newLine}";
-			}
-			outPutText = outPutText.replace("{newLine}", "\r\n");
-
-			if (outPutText != null && !outPutText.equals("")) {
-				String timeStamp = "80" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
-				String fileName = timeStamp + "_" + hm.get(module).toLowerCase() + "_stmt_exclusion";
-
-				Func.checkAndCreateDir(path + File.separator + hm.get(module));
-				String filePath = path + File.separator + hm.get(module) + File.separator + fileName + ".sql";
-
-				writeToFile(filePath, outPutText);
-				String su = '"' + fileName + '"' + ",";
-				startUp = startUp + "\r\n" + su;
-			}
-
-		}
-		print(module + " модулын StmtExclusion-ын файл үүсэгж дууслаа");
-		print("");
-	}
-
-	// Cls үүсгэх
-	public static void createClsDbChange(String path) {
-		String outPutText = "";
-
-		String sql = Const.SQL_MERGE_CLS.replace("{system}", ms.get(module));
-		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
-
-		if (lstRes != null && !lstRes.isEmpty()) {
-			for (HashMap<String, Object> l : lstRes) {
-				outPutText = outPutText + l.get("MRG_QUERY").toString() + "{newLine}";
-			}
-			outPutText = outPutText.replace("{newLine}", "\r\n");
-
-			if (outPutText != null && !outPutText.equals("")) {
-				String timeStamp = "80" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
-				String fileName = timeStamp + "_" + hm.get(module).toLowerCase() + "_class";
-
-				Func.checkAndCreateDir(path + File.separator + hm.get(module));
-				String filePath = path + File.separator + hm.get(module) + File.separator + fileName + ".sql";
-
-				writeToFile(filePath, outPutText);
-				String su = '"' + fileName + '"' + ",";
-				startUp = startUp + "\r\n" + su;
-			}
-
-		}
-		print(module + " модулын Cls-ын файл үүсэгж дууслаа");
 		print("");
 	}
 
@@ -690,6 +491,13 @@ public class Main {
 			typeName = "oper_priv";
 			sql = Const.SQL_OPER;
 			break;
+		case TLLR_OPER:
+		case TLLR_PRIV:
+		case TLLR_OPER_PRIV:
+			type = DBchangeType.TLLR_OPER;
+			typeName = "tllr_oper_priv";
+			sql = Const.SQL_TLLR_OPER;
+			break;
 		case CACHE:
 			typeName = "cache";
 			sql = Const.SQL_CACHE;
@@ -728,6 +536,14 @@ public class Main {
 
 			sql = replaceSqlSysMod(Const.SQL_RAM_SYSTEM, DBchangeType.RAM_SYSTEM);
 			outPutText = outPutText + executeQuery(sql, DBchangeType.RAM_SYSTEM);
+		} else if (type.equals(DBchangeType.TLLR_OPER)) {
+			sql = replaceSqlSysMod(Const.SQL_TLLR_PRIV, DBchangeType.TLLR_PRIV);
+			outPutText = outPutText + executeQuery(sql, DBchangeType.TLLR_PRIV);
+
+			sql = replaceSqlSysMod(Const.SQL_TLLR_OPER_PRIV, DBchangeType.TLLR_OPER_PRIV);
+			outPutText = outPutText + executeQuery(sql, DBchangeType.TLLR_OPER_PRIV);
+		} else {
+			// do nothing.
 		}
 
 		if (outPutText != null && !outPutText.equals("")) {
@@ -735,8 +551,10 @@ public class Main {
 			String timeStamp = "80" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
 			String fileName = timeStamp + "_" + hm.get(module).toLowerCase() + "_" + typeName;
 
-			Func.checkAndCreateDir(path + File.separator + hm.get(module));
-			String filePath = path + File.separator + hm.get(module) + File.separator + fileName + ".sql";
+			String writePath = path + File.separator + hm.get(module).toLowerCase();
+			Func.checkAndCreateDir(writePath);
+			Func.checkAndCreateDir(writePath + File.separator + "db");
+			String filePath = writePath + File.separator + "db" + File.separator + fileName + ".sql";
 
 			writeToFile(filePath, outPutText);
 			String su = '"' + fileName + '"' + ",";
@@ -754,6 +572,9 @@ public class Main {
 		case BULG_TYPE:
 		case BULG_FIELD:
 		case PROC_OPER:
+		case TLLR_OPER:
+		case TLLR_PRIV:
+		case TLLR_OPER_PRIV:
 			sql = sql.replace("{module}", module);
 			break;
 		case MSG:
@@ -772,7 +593,7 @@ public class Main {
 		return sql;
 	}
 
-	public static String executeQuery(String sql, DBchangeType type) {
+	private static String executeQuery(String sql, DBchangeType type) {
 		String outPutText = "";
 		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql);
 
@@ -797,6 +618,7 @@ public class Main {
 				break;
 			case OPER:
 			case PROC_OPER:
+			case TLLR_OPER:
 				text = replaceQueryOper(l);
 				break;
 			case CACHE:
@@ -809,9 +631,11 @@ public class Main {
 				text = replaceQueryBulgField(l);
 				break;
 			case PRIV:
+			case TLLR_PRIV:
 				text = replaceQueryPriv(l);
 				break;
 			case OPER_PRIV:
+			case TLLR_OPER_PRIV:
 				text = replaceQueryOperPriv(l);
 				break;
 			case ADM_SYSTEM:
@@ -1057,9 +881,9 @@ public class Main {
 
 	// pkg, type, func баазын өөрчилөлт (SRC_FNC, SRC_TYPE, SRC_PKB, SRC_PKS) байх
 	// юм бол модулын код оруулж дотор нь timestamp коммент хэсгээр оруулан.
-	public static void chgExistingDbChange() {
-		String path = "C:\\Users\\badamsereedari.t\\Documents\\test\\db_old";
-		String destPath = "C:\\Users\\badamsereedari.t\\Documents\\test\\db";
+	private static void chgExistingDbChange() {
+		String path = "D:\\nes-server\\loan.b\\db_old";
+		String destPath = "D:\\nes-server\\loan.b\\db";
 
 		File folder = new File(path);
 		File[] listOfFiles = folder.listFiles();
@@ -1072,7 +896,6 @@ public class Main {
 	}
 
 	private static void chgExistingDbChangeSingle(String filePath, String distPath, String fileName) {
-
 		String sql = "";
 
 		List<String> l = readFileInList(filePath);
@@ -1098,12 +921,12 @@ public class Main {
 		} else if (fileName.startsWith("SRC_TYPE")) {
 			subLayer = "30";
 		} else {
-			subLayer = "50";
+			subLayer = "70";
 		}
 		fileName = fileName.toLowerCase();
 		fileName = fileName.split("\\.sql")[0];
 		fileName = fileName.split("src_")[1];
-		fileName = "src_bcom.c_" + fileName;
+		fileName = "src_loan.b_" + fileName;
 		String timeStamp = fileName + "$" + subLayer + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
 
 		sql = "--" + timeStamp + "\r\n" + sql;
@@ -1113,7 +936,7 @@ public class Main {
 	}
 
 	// Лист жагсаалт болгох
-	public static void listStr(List<String> listStr) {
+	private static void listStr(List<String> listStr) {
 
 		String res = "('" + String.join("', '", listStr) + "')";
 
@@ -1121,7 +944,7 @@ public class Main {
 	}
 
 	// sublayer төрлийн файлын нэр харуулах
-	public static void printFileName(String path, String subLayer) {
+	private static void printFileName(String path, String subLayer) {
 		File folder = new File(path);
 		File[] listOfFiles = folder.listFiles();
 
@@ -1133,7 +956,7 @@ public class Main {
 	}
 
 	// байлын замаас sublayer-т байгаа баазын өөрчилөлтүүдийг нэг мөр болгох
-	public static void onelineAll(String path, String subLayer) {
+	private static void onelineAll(String path, String subLayer) {
 		File folder = new File(path);
 		File[] listOfFiles = folder.listFiles();
 
@@ -1145,14 +968,14 @@ public class Main {
 	}
 
 	// regex шалгах
-	public static void regexChecker() {
+	private static void regexChecker() {
 		String text = "select :POLICY_CODE, :p2, :MTRX|DAY|AGE from Customer where name = :pp3 ";
 		String ptrn = "(\\:[\\w|]+)";
 
 		regexChecker(text, ptrn);
 	}
 
-	public static void regexChecker(String text, String pattern) {
+	private static void regexChecker(String text, String pattern) {
 		List<String> parameters = new ArrayList<>();
 		Pattern ptrn = Pattern.compile(pattern);
 		Matcher m = ptrn.matcher(text);
@@ -1167,7 +990,7 @@ public class Main {
 	}
 
 	// Төрсөн өдөр тооцох
-	public static int calculateAge(Date birthDate) {
+	private static int calculateAge(Date birthDate) {
 		int years = 0;
 		int months = 0;
 
@@ -1204,17 +1027,17 @@ public class Main {
 	}
 
 	// Trunc round
-	public static double truncate(double x) {
+	private static double truncate(double x) {
 		return Math.floor(x * 100) / 100;
 	}
 
 	// Нэг мөрөнд оруулах
-	public static void oneline() {
-		String filePath = "D:\\nes-server\\bac.b\\db\\80200316103145_bac.b_txn_code.sql";
+	private static void oneline() {
+		String filePath = "D:\\nes-server\\cif.b\\db\\20200318100800_cif.b_nmw_add_oper.sql";
 		oneline(filePath);
 	}
 
-	public static void oneline(String filePath) {
+	private static void oneline(String filePath) {
 
 		String sql = "";
 
@@ -1255,7 +1078,7 @@ public class Main {
 	}
 
 	// бэлэн байсан баазын өөрчилөлтөөс ерөнхий тохиргооны нэр авах
-	public static void getConfig(String filePath) {
+	private static void getConfig(String filePath) {
 		List<String> l = readFileInList(filePath);
 
 		Iterator<String> itr = l.iterator();
@@ -1270,7 +1093,7 @@ public class Main {
 	}
 
 	// Файлаас мөр өөр нь салгаж жагсаалт болгох
-	public static List<String> readFileInList(String fileName) {
+	private static List<String> readFileInList(String fileName) {
 
 		List<String> lines = Collections.emptyList();
 		try {
@@ -1284,7 +1107,7 @@ public class Main {
 	}
 
 	// Файл руу текс бичих
-	public static void writeToFile(String filePath, String text) {
+	private static void writeToFile(String filePath, String text) {
 		try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filePath), "UTF-8"))) {
 			bw.write(text);
 			bw.flush();
@@ -1295,11 +1118,11 @@ public class Main {
 	}
 
 	// view дотхор комент, BEQUEATH DEFINER хэсгийг хасах
-	public static void cleanAndWriteSrcFile(String filePath, String startString) throws FileNotFoundException {
+	private static void cleanAndWriteSrcFile(String filePath, String startString) throws FileNotFoundException {
 		cleanAndWriteSrcFile(filePath, startString, false);
 	}
 
-	public static void cleanAndWriteSrcFile(String filePath, String startString, boolean removeComment)
+	private static void cleanAndWriteSrcFile(String filePath, String startString, boolean removeComment)
 			throws FileNotFoundException {
 		String sql = "";
 
@@ -1329,7 +1152,7 @@ public class Main {
 	}
 
 	// өгөгдсөн фатерны хоорондохыг цэвэрлэх
-	public static String removeWithRegex(String str, String p1, String p2) {
+	private static String removeWithRegex(String str, String p1, String p2) {
 		String regexString = Pattern.quote(p1) + "(.*?)" + Pattern.quote(p2);
 
 		Pattern pattern = Pattern.compile(regexString);
@@ -1344,21 +1167,21 @@ public class Main {
 	}
 
 	// patter-уудын хоорондох тэмдэгтийг авах
-	public static String getStrWithRegex(String str, String p1, String p2) {
+	private static String getStrWithRegex(String str, String p1, String p2) {
 		String regexString = Pattern.quote(p1) + "(.*?)" + Pattern.quote(p2);
 
 		Pattern pattern = Pattern.compile(regexString);
 		Matcher matcher = pattern.matcher(str);
+		String textInBetween = "";
 
 		while (matcher.find()) {
-			String textInBetween = matcher.group(1);
-			print(textInBetween);
+			textInBetween = matcher.group(1);
 		}
-		return str;
+		return textInBetween;
 	}
 
 	// Текстээс огноо гаргаж авах
-	public static Date str2Date(String pDate) {
+	private static Date str2Date(String pDate) {
 		SimpleDateFormat formatter = new SimpleDateFormat("dd-MMM-yy");
 		Date dt = null;
 		try {
@@ -1370,7 +1193,7 @@ public class Main {
 	}
 
 	// file-ын урд src нэмж байгаа
-	public static void chgFileType(String filePath, String moduleCode) throws IOException {
+	private static void chgFileType(String filePath, String moduleCode) throws IOException {
 		File folder = new File(filePath);
 		File[] listOfFiles = folder.listFiles();
 
@@ -1389,11 +1212,11 @@ public class Main {
 	}
 
 	// timestamp нэмэх
-	public static void addAndGetTimestamp(String filePath, String subLayer) throws IOException {
+	private static void addAndGetTimestamp(String filePath, String subLayer) throws IOException {
 		addAndGetTimestamp(filePath, subLayer, true);
 	}
 
-	public static void addAndGetTimestamp(String filePath, String subLayer, boolean isView) throws IOException {
+	private static void addAndGetTimestamp(String filePath, String subLayer, boolean isView) throws IOException {
 		File folder = new File(filePath);
 		File[] listOfFiles = folder.listFiles();
 
@@ -1412,7 +1235,7 @@ public class Main {
 	}
 
 	// тайлангын файлын зам авах
-	public static void getRptPath(String rptPath) {
+	private static void getRptPath(String rptPath) {
 		File folder = new File(rptPath);
 		File[] listOfFiles = folder.listFiles();
 
@@ -1427,12 +1250,12 @@ public class Main {
 	}
 
 	// тайлангын файлын зам солих
-	public static void rptChgFolder() {
+	private static void rptChgFolder() {
 		String rptPath = "C:\\Users\\badamsereedari.t\\Documents\\test\\CBS_STANDARD";
 		rptChgFolder(rptPath);
 	}
 
-	public static void rptChgFolder(String rptPath) {
+	private static void rptChgFolder(String rptPath) {
 
 		File folder = new File(rptPath);
 		File[] listOfFiles = folder.listFiles();
@@ -1500,12 +1323,12 @@ public class Main {
 		file.delete();
 	}
 
-	public static void print(String msg) {
+	private static void print(String msg) {
 		System.out.println(msg);
 	}
 
 	// KENDO маст шалгалт
-	public static String kendoMaskToRegex(String kendoMask) {
+	private static String kendoMaskToRegex(String kendoMask) {
 
 		StringBuilder sbRegex = new StringBuilder();
 		int count = 0;
@@ -1588,14 +1411,14 @@ public class Main {
 	}
 
 	// html -> pdf
-	public static String htmlToPdf() {
+	private static String htmlToPdf() {
 		String htmlPath = "D:\\Workspace\\VATS-EMAIL.HTML";
 		String pdfPath = "D:\\Workspace\\PDF_test.pdf";
 
 		return htmlToPdf(htmlPath, pdfPath);
 	}
 
-	public static String htmlToPdf(String htmlPath, String pdfPath) {
+	private static String htmlToPdf(String htmlPath, String pdfPath) {
 		Document document = new Document();
 		// step 2
 		try {
@@ -1615,7 +1438,7 @@ public class Main {
 
 	// qr-ын зургийн замийг авж base64 болгох
 	@SuppressWarnings("resource")
-	public static String qrToBase64(String qrPath) throws IOException {
+	private static String qrToBase64(String qrPath) throws IOException {
 		String base64String = "";
 
 		File file = new File(qrPath);
@@ -1626,6 +1449,21 @@ public class Main {
 		base64String = Func.encodeAsBase64(bytes);
 
 		return base64String;
+	}
+
+	private static void goSubFolders() {
+		File folder = new File("D:\\nes-server");
+		File[] listOfFiles = folder.listFiles();
+
+		for (int i = 0; i < listOfFiles.length; i++) {
+			if (listOfFiles[i].isDirectory()) {
+				try {
+					PersistenceChecker.checkEntities(listOfFiles[i].getPath());
+				} catch (Exception e) {
+					print(e.getMessage());
+				}
+			}
+		}
 	}
 
 	private static void putModules() {
@@ -1671,6 +1509,7 @@ public class Main {
 	}
 
 	private static void putModuleSystem() {
+		ms.put("GEN", "1010");
 		ms.put("EOD", "1062");
 		ms.put("IRC", "1014");
 		ms.put("CIF", "1015");
@@ -1710,133 +1549,12 @@ public class Main {
 		ms.put("ASR", "1212");
 	}
 
-	public static List<HashMap<String, Object>> ExecuteQuery(String sql) {
+	private static List<HashMap<String, Object>> ExecuteQuery(String sql) {
 		return ExecuteQuery(sql, false);
 	}
 
-	public static List<HashMap<String, Object>> ExecuteQuery(String sql, boolean isIndex) {
+	private static List<HashMap<String, Object>> ExecuteQuery(String sql, boolean isIndex) {
 		HashMap<String, Object> tmpGeneratedParam = null;
 		return ExternalDB.exeSQL(sql, tmpGeneratedParam, dbPort, dbName, dbPassword, isIndex);
-	}
-
-	static List<String> tables = new ArrayList<>();
-	static List<String> columns = new ArrayList<>();
-	static List<String> foreignKeys = new ArrayList<>();
-	static List<String> indexes = new ArrayList<>();
-
-	// Table үүсгэх
-	public static void createTableAll(String path) {
-		String text = "";
-		print(module + " модулын байзын файл үүсэгж эхлэв.");
-		String filePath = path + File.separator + hm.get(module);
-		Func.checkAndCreateDir(filePath);
-		filePath = filePath + File.separator + "src_" + hm.get(module).toLowerCase();
-
-		prepTableFiles(CREATE_SCRIPT_PATH + "1_CreateTable_NEW.sql", module, filePath, 1);
-		prepTableFiles(CREATE_SCRIPT_PATH + "2_AddColumn.sql", module, filePath, 2);
-		prepTableFiles(CREATE_SCRIPT_PATH + "3_ForeignKey_NEW.sql", module, filePath, 3);
-		prepTableFiles(CREATE_SCRIPT_PATH + "4_Index_NEW.sql", module, filePath, 4);
-
-		List<String> tableNames = getTableNames(module);
-
-		for (String name : tableNames) {
-			text = "";
-			String chkTable = "CHK_TBL('" + name + "')";
-			String chkColumn = "CHK_COL('" + name + "'";
-			String chkForeignKey = "ALTER TABLE " + name + " ADD CONSTRAINT";
-			String chkIndex = "ON " + name + " (";
-			for (String t : tables) {
-				if (t.contains(chkTable)) {
-					text = text + t + "{newLine}";
-					text = text + "{newLine}";
-					tables.remove(t);
-					break;
-				}
-			}
-			for (String c : columns) {
-				if (c.contains(chkColumn)) {
-					text = text + c + "{newLine}";
-				}
-			}
-			for (String i : indexes) {
-				if (i.contains(chkIndex)) {
-					text = text + i + "{newLine}";
-				}
-			}
-			for (String f : foreignKeys) {
-				if (f.contains(chkForeignKey)) {
-					text = text + f + "{newLine}";
-				}
-			}
-
-			String fileName = "src_" + hm.get(module).toLowerCase() + "_tbl_" + name.toLowerCase();
-			String timeStamp = fileName + "$20" + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
-
-			text = "--" + timeStamp + "{newLine}" + text;
-			text = text.replace("{newLine}", "\r\n");
-
-			Func.checkAndCreateDir(path + File.separator + hm.get(module));
-			String outPut = path + File.separator + hm.get(module) + File.separator + fileName + ".sql";
-
-			writeToFile(outPut, text);
-			String su = '"' + timeStamp + '"' + ",";
-			startUp = startUp + "\r\n" + su;
-
-			print(name + " table file created!");
-		}
-	}
-
-	public static void prepTableFiles(String filePath, String moduleName, String path, int dbType) {
-		String sql = "";
-		String textFile = "";
-		boolean isIndex = false;
-
-		List<String> line = readFileInList(filePath);
-
-		Iterator<String> itr = line.iterator();
-		while (itr.hasNext()) {
-			sql = sql + itr.next() + " ";
-		}
-		sql = sql.replace("&&tableprefix", moduleName);
-
-		if (dbType == 4) {
-			isIndex = true;
-		}
-
-		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql, isIndex);
-
-		for (HashMap<String, Object> l : lstRes) {
-			textFile = l.get("CREATESCRIPT").toString();
-			switch (dbType) {
-			case 1:
-				tables.add(textFile);
-				break;
-			case 2:
-				columns.add(textFile);
-				break;
-			case 3:
-				foreignKeys.add(textFile);
-				break;
-			case 4:
-				indexes.add(textFile);
-				break;
-			}
-		}
-	}
-
-	private static List<String> getTableNames(String moduleName) {
-		List<String> tableNames = new ArrayList<>();
-		String textFile = "";
-		String sql = "SELECT TABLE_NAME FROM ALL_TABLES WHERE OWNER = '" + dbName + "' AND TABLE_NAME LIKE '"
-				+ moduleName + "%'";
-
-		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql, false);
-
-		for (HashMap<String, Object> l : lstRes) {
-			textFile = l.get("TABLE_NAME").toString();
-			tableNames.add(textFile);
-		}
-
-		return tableNames;
 	}
 }
