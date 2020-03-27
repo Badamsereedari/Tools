@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -49,12 +50,21 @@ public class Main {
 	static String CREATE_SCRIPT_PATH = System.getProperty("user.dir") + "\\CREATE_METADATA_SCRIPTS\\";
 	static String FILE_OUTPUT_PATH = "C:\\nes";
 
-	static String[] systemList = { "CIF" };
+	static String[] systemList = { "PROC" };
 
 	public static void main(String[] args) throws Exception {
 		createFullDbChange();
 //		oneline();
 //		chgExistingDbChange();
+
+//		String[] fileList = { 
+//				"D:\\nes-server\\arcv.b\\db\\80200327105647_arcv.b_fund_type.sql",
+//				"D:\\nes-server\\arcv.b\\db\\80200327105648_arcv.b_eod_step.sql",
+//				"D:\\nes-server\\arcv.b\\db\\80200327105649_arcv.b_eod_step_pred.sql",
+//		};
+//		for (String f : fileList) {
+//			oneline(f);
+//		}
 	}
 
 	private static void createFullDbChange() {
@@ -79,6 +89,7 @@ public class Main {
 			module = s;
 
 			createFuncs(path, false);
+
 		}
 		writeToFile(path + File.separator + "startup_text.txt", startUp);
 
@@ -96,7 +107,7 @@ public class Main {
 		if (!onlyTable) {
 			// View
 			createViewDbChange(path);
-			
+
 			// System
 			createDataDbChange(path, DBchangeType.GEN_SYSTEM);
 
@@ -1033,18 +1044,17 @@ public class Main {
 
 	// Нэг мөрөнд оруулах
 	private static void oneline() {
-		String filePath = "D:\\nes-server\\asr.b\\db\\80200324195130_asr.b_add_ntf_data.sql";
+		String filePath = "C:\\Users\\badamsereedari.t\\Desktop\\db_clean.txt";
 		oneline(filePath);
 	}
 
 	private static void oneline(String filePath) {
-
-		String sql = "";
-
 		List<String> l = readFileInList(filePath);
+		List<String> outPut = new ArrayList<>();
 
 		Iterator<String> itr = l.iterator();
 		boolean isFirstLine = true;
+		String line = "";
 		while (itr.hasNext()) {
 			boolean isLastLine = false;
 			String newLine = itr.next();
@@ -1055,26 +1065,30 @@ public class Main {
 					isLastLine = true;
 				}
 
-				if (sql != null && !sql.equals("")) {
+				if (line != null && !line.equals("")) {
 					if (isFirstLine) {
-						sql = sql + newLine;
+						line = line + newLine;
 						isFirstLine = false;
 					} else {
-						sql = sql + " " + newLine;
+						line = line + " " + newLine;
 					}
 					if (isLastLine) {
-						sql = sql + "{newLine}";
+						outPut.add(line);
+						line = "";
 						isFirstLine = true;
 					}
 				} else {
-					sql = newLine;
+					line = newLine;
 				}
 			}
 		}
-		sql = sql.replaceAll("\\s+", " ");
-		sql = sql.replace("{newLine}", "\r\n");
 
-		writeToFile(filePath, sql);
+//		writeToFile(filePath, sql);
+		try {
+			Files.write(Paths.get(filePath), outPut, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING);
+		} catch (IOException e) {
+			print(e.getMessage());
+		}
 	}
 
 	// бэлэн байсан баазын өөрчилөлтөөс ерөнхий тохиргооны нэр авах
