@@ -5,6 +5,7 @@
 	<classpathentry kind="lib" path="D:/Tools/tools/Tools/jar/itextpdf-5.5.13.jar"/>
 	<classpathentry kind="lib" path="D:/Tools/tools/Tools/jar/jsoup-1.12.1.jar"/>
 	<classpathentry kind="lib" path="D:/Tools/tools/Tools/jar/ojdbc8.jar"/>
-	<classpathentry kind="lib" path="D:/Tools/tools/Tools/jar/xmlworker-5.5.13.jar"/>
+	<classpathentry kind="lib" path="D:/Tools/tools/Tools/jar/xmlworker-5.5.13.jar" sourcepath="C:/Users/badamsereedari.t/.m2/repository/com/itextpdf/tool/xmlworker/5.5.13/xmlworker-5.5.13-sources.jar"/>
+	<classpathentry kind="lib" path="D:/Tools/tools/Tools/jar/commons-codec-1.14.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

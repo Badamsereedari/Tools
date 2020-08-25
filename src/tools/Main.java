@@ -20,6 +20,7 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -50,21 +51,44 @@ public class Main {
 	static String CREATE_SCRIPT_PATH = System.getProperty("user.dir") + "\\CREATE_METADATA_SCRIPTS\\";
 	static String FILE_OUTPUT_PATH = "C:\\nes";
 
-	static String[] systemList = { "PROC" };
+	static String[] systemList = { "CIB" };
 
 	public static void main(String[] args) throws Exception {
-		createFullDbChange();
-//		oneline();
-//		chgExistingDbChange();
+//		createFullDbChange();
+		
+		stringBuilderTest();
+	}
+	
+	private static void stringBuilderTest() {
+		StringBuilder test = new StringBuilder();
+		
+		test.append("asd");
+		test.append("asd1");
+		test.append("asd2");
+		
+		print(test.toString());
+	}
 
-//		String[] fileList = { 
-//				"D:\\nes-server\\arcv.b\\db\\80200327105647_arcv.b_fund_type.sql",
-//				"D:\\nes-server\\arcv.b\\db\\80200327105648_arcv.b_eod_step.sql",
-//				"D:\\nes-server\\arcv.b\\db\\80200327105649_arcv.b_eod_step_pred.sql",
-//		};
-//		for (String f : fileList) {
-//			oneline(f);
-//		}
+	private static int dateDiff(String termBasis, Date startDate, Date endDate) {
+
+		TimeSpan _ts = new TimeSpan(startDate, endDate).dateDiff();
+
+		int _diff = 0;
+		if (Func.equal(termBasis, "Y")) {
+			_diff = _ts.getYear();
+		} else if (Func.equal(termBasis, "M")) {
+			_diff = _ts.getAllMonths();
+		} else if (Func.equal(termBasis, "D")) {
+			_diff = _ts.getAllDays() + 1; // AS-83
+		} else {
+			// Sonar
+		}
+
+		return _diff;
+	}
+
+	private static void hashPassword(Long userId, String password) {
+		print(Misc.hash(String.valueOf(userId) + "_" + password));
 	}
 
 	private static void createFullDbChange() {
@@ -88,8 +112,7 @@ public class Main {
 
 			module = s;
 
-			createFuncs(path, false);
-
+			createFuncs(path, true);
 		}
 		writeToFile(path + File.separator + "startup_text.txt", startUp);
 
@@ -292,7 +315,7 @@ public class Main {
 			sorting = true;
 		}
 		while (sorting) {
-			List<String> tmpSort = new ArrayList<String>();
+			List<String> tmpSort = new ArrayList<>();
 			for (String name : sortTables) {
 				Long tier = tableTier.get(name);
 				tmpList = tableKeys.get(name);
@@ -882,7 +905,7 @@ public class Main {
 	}
 
 	private static boolean chkFileName(String name) {
-		if (name.startsWith("SRC_FNC") || name.startsWith("SRC_PKB") || name.startsWith("SRC_PKS")
+		if (name.startsWith("SRC_FUNC") || name.startsWith("SRC_PKB") || name.startsWith("SRC_PKS")
 				|| name.startsWith("SRC_TYPE")) {
 			return true;
 		} else {
@@ -893,8 +916,8 @@ public class Main {
 	// pkg, type, func баазын өөрчилөлт (SRC_FNC, SRC_TYPE, SRC_PKB, SRC_PKS) байх
 	// юм бол модулын код оруулж дотор нь timestamp коммент хэсгээр оруулан.
 	private static void chgExistingDbChange() {
-		String path = "D:\\nes-server\\loan.b\\db_old";
-		String destPath = "D:\\nes-server\\loan.b\\db";
+		String path = "D:\\nes-server\\gl.b\\db_old";
+		String destPath = "D:\\nes-server\\gl.b\\db";
 
 		File folder = new File(path);
 		File[] listOfFiles = folder.listFiles();
@@ -927,7 +950,7 @@ public class Main {
 		sql = sql.replace("{newLine}", "\r\n");
 
 		String subLayer = "";
-		if (fileName.startsWith("SRC_FNC")) {
+		if (fileName.startsWith("SRC_FUNC")) {
 			subLayer = "40";
 		} else if (fileName.startsWith("SRC_TYPE")) {
 			subLayer = "30";
@@ -937,7 +960,7 @@ public class Main {
 		fileName = fileName.toLowerCase();
 		fileName = fileName.split("\\.sql")[0];
 		fileName = fileName.split("src_")[1];
-		fileName = "src_loan.b_" + fileName;
+		fileName = "src_gl.b_" + fileName;
 		String timeStamp = fileName + "$" + subLayer + Func.toDateTimeStr(new Date(), "yyMMddHHmmss");
 
 		sql = "--" + timeStamp + "\r\n" + sql;
@@ -1044,7 +1067,7 @@ public class Main {
 
 	// Нэг мөрөнд оруулах
 	private static void oneline() {
-		String filePath = "C:\\Users\\badamsereedari.t\\Desktop\\db_clean.txt";
+		String filePath = "C:\\Users\\badamsereedari.t\\Documents\\ONELINE.txt";
 		oneline(filePath);
 	}
 
@@ -1337,8 +1360,8 @@ public class Main {
 		file.delete();
 	}
 
-	private static void print(String msg) {
-		System.out.println(msg);
+	private static void print(Object msg) {
+		System.out.println(toStr(msg));
 	}
 
 	// KENDO маст шалгалт
@@ -1563,6 +1586,135 @@ public class Main {
 		ms.put("ASR", "1212");
 	}
 
+	private static void generateTLFile() {
+		String sql = "SELECT * FROM TL_ASSET";
+		String mnJson = "";
+		String ruJson = "";
+		String enJson = "";
+
+		List<String> keyList = new ArrayList<>();
+
+		HashMap<String, HashMap<String, String>> mnHash = new HashMap<>();
+		HashMap<String, HashMap<String, String>> ruHash = new HashMap<>();
+		HashMap<String, HashMap<String, String>> enHash = new HashMap<>();
+
+		List<HashMap<String, Object>> lstRes = ExecuteQuery(sql, false);
+
+		for (HashMap<String, Object> l : lstRes) {
+			String key = l.get("KEY").toString();
+			String colName = l.get("COL_NAME").toString();
+			String mn = toStr(l.get("MN"));
+			String en = toStr(l.get("EN"));
+			String ru = toStr(l.get("RU"));
+
+			if (!keyList.contains(key)) {
+				keyList.add(key);
+			}
+
+			HashMap<String, String> a = mnHash.get(key);
+			if (a == null) {
+				a = new HashMap<>();
+			}
+
+			a.put(colName, mn);
+			mnHash.put(key, a);
+
+			a = ruHash.get(key);
+			if (a == null) {
+				a = new HashMap<>();
+			}
+
+			a.put(colName, ru);
+			ruHash.put(key, a);
+
+			a = enHash.get(key);
+			if (a == null) {
+				a = new HashMap<>();
+			}
+
+			a.put(colName, en);
+			enHash.put(key, a);
+		}
+
+		for (String key : keyList) {
+			HashMap<String, String> tlList = mnHash.get(key);
+
+			if (mnJson != null && !mnJson.equals("")) {
+				mnJson = mnJson + ",";
+			} else {
+				mnJson = mnJson + "{\r\n" + "\t\"BCOM-C\": {\r\n";
+			}
+
+			if (enJson != null && !enJson.equals("")) {
+				enJson = enJson + ",";
+			} else {
+				enJson = enJson + "{\r\n" + "\t\"BCOM-C\": {\r\n";
+			}
+
+			if (ruJson != null && !ruJson.equals("")) {
+				ruJson = ruJson + ",";
+			} else {
+				ruJson = ruJson + "{\r\n" + "\t\"BCOM-C\": {\r\n";
+			}
+
+			mnJson = mnJson + "\t\t\"" + key + "\": {\r\n";
+
+			for (String mnKey : tlList.keySet()) {
+				String mnValue = tlList.get(mnKey);
+
+				mnJson = mnJson + "\t\t\t\"" + mnKey + "\": \"" + mnValue + "\",\r\n";
+			}
+
+			mnJson = mnJson + "\t\t}";
+
+			tlList = enHash.get(key);
+
+			if (enJson != null && !enJson.equals("")) {
+				enJson = enJson + ",";
+			}
+
+			enJson = enJson + "\"" + key + "\": {\r\n";
+
+			for (String enKey : tlList.keySet()) {
+				String enValue = tlList.get(enKey);
+
+				enJson = enJson + "\t\t\t\"" + enKey + "\": \"" + enValue + "\",\r\n";
+			}
+
+			enJson = enJson + "\t\t}";
+
+			tlList = ruHash.get(key);
+
+			if (ruJson != null && !ruJson.equals("")) {
+				ruJson = ruJson + ",";
+			}
+
+			ruJson = ruJson + "\"" + key + "\": {\r\n";
+
+			for (String ruKey : tlList.keySet()) {
+				String ruValue = tlList.get(ruKey);
+
+				ruJson = ruJson + "\t\t\t\"" + ruKey + "\": \"" + ruValue + "\",\r\n";
+			}
+
+			ruJson = ruJson + "\t\t}";
+		}
+		if (mnJson != null && !mnJson.equals("")) {
+			mnJson = mnJson + "\r\n\t}\r\n}";
+		}
+
+		if (enJson != null && !enJson.equals("")) {
+			enJson = enJson + "\r\n\t}\r\n}";
+		}
+
+		if (ruJson != null && !ruJson.equals("")) {
+			ruJson = ruJson + "\r\n\t}\r\n}";
+		}
+		writeToFile(FILE_OUTPUT_PATH + File.separator + "bcom-c.mn.json", mnJson);
+		writeToFile(FILE_OUTPUT_PATH + File.separator + "bcom-c.en.json", enJson);
+		writeToFile(FILE_OUTPUT_PATH + File.separator + "bcom-c.ru.json", ruJson);
+	}
+
 	private static List<HashMap<String, Object>> ExecuteQuery(String sql) {
 		return ExecuteQuery(sql, false);
 	}
@@ -1570,5 +1722,13 @@ public class Main {
 	private static List<HashMap<String, Object>> ExecuteQuery(String sql, boolean isIndex) {
 		HashMap<String, Object> tmpGeneratedParam = null;
 		return ExternalDB.exeSQL(sql, tmpGeneratedParam, dbPort, dbName, dbPassword, isIndex);
+	}
+
+	private static String toStr(Object obj) {
+		if (obj == null) {
+			return "";
+		}
+
+		return obj.toString();
 	}
 }

@@ -101,6 +101,14 @@ public class Func {
 	private static final String WRITE_EXCEL_LOG_FILE = "WriteExcel";
 
 	private static boolean wroteInfo = false;
+	
+	public static Date addDays(Date date, int days) {
+		Calendar calendar = Calendar.getInstance();
+		calendar.setTime(date);
+		calendar.add(Calendar.DATE, days);
+
+		return calendar.getTime();
+	}
 
 	// Өгөгдсөн огноонд өгөгдсөн сарыг нэмэх
 	public static Date addMonths(Date date, int months) {
